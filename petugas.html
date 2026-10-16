@@ -6,6 +6,7 @@
 <title>Panel Petugas — Bank Mini SMK YP.79</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <!-- Firebase opsional: isi config di bawah untuk mode ONLINE. Jika kosong, otomatis pakai LocalStorage (offline/demo). -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -94,7 +95,9 @@ body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfd
         <button id="btn-logout" class="ml-auto rounded-xl border px-4 py-2 text-sm font-bold">Keluar</button>
       </div>
       <form id="tx-form" class="grid md:grid-cols-2 gap-3 mt-4">
-        <div><label class="text-xs font-bold">NIS</label><input id="f-nis" class="form-field" required autocomplete="off"></div>
+        <div><label class="text-xs font-bold">NIS <button id="btn-scan" type="button" class="ml-1 rounded-lg border border-emerald-700 px-2 py-0.5 text-xs font-bold text-emerald-800">📷 Scan</button></label><input id="f-nis" class="form-field" required autocomplete="off">
+          <div id="scanner" class="hidden mt-2 rounded-xl border p-2"><div id="qr-reader" style="width:100%"></div><button id="btn-scan-stop" type="button" class="mt-2 rounded-lg border px-3 py-1.5 text-xs font-bold">Tutup kamera</button></div>
+        </div>
         <div><label class="text-xs font-bold">Nama siswa</label><input id="f-nama" class="form-field uppercase" required></div>
         <div><label class="text-xs font-bold">PIN nasabah (wajib jika NIS baru, 4–6 digit)</label><input id="f-pin" class="form-field" inputmode="numeric" maxlength="6" placeholder="Contoh: 1234"></div>
         <div><label class="text-xs font-bold">Jenis</label><select id="f-jenis" class="form-field"><option>Setoran</option><option>Penarikan</option></select></div>
@@ -125,8 +128,20 @@ body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfd
         <div class="flex flex-wrap gap-2 mt-2 items-center">
           <input id="import-csv" type="file" accept=".csv" class="text-sm">
           <button id="btn-import" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">⬆ Import Sekarang</button>
+          <button id="btn-template" class="rounded-xl border px-4 py-2.5 text-sm font-bold">⬇ Template CSV</button>
         </div>
         <p id="import-status" class="text-sm mt-2 font-medium"></p>
+      </div>
+      <div class="mt-5 border-t pt-4">
+        <h3 class="font-bold">Pengaturan Nota / Kop</h3>
+        <p class="text-xs text-slate-500">Otomatis tampil di semua cetakan (kop + tanda tangan).</p>
+        <div class="grid md:grid-cols-2 gap-3 mt-2">
+          <div><label class="text-xs font-bold">Nama sekolah</label><input id="p-sekolah" class="form-field"></div>
+          <div><label class="text-xs font-bold">Alamat</label><input id="p-alamat" class="form-field"></div>
+          <div><label class="text-xs font-bold">No. telepon</label><input id="p-telp" class="form-field"></div>
+          <div><label class="text-xs font-bold">Nama petugas (TTD)</label><input id="p-petugas" class="form-field uppercase"></div>
+        </div>
+        <div class="mt-2"><button id="btn-profile" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">💾 Simpan Pengaturan</button></div>
       </div>
       <div class="mt-5 border-t pt-4">
     <h2 class="heading-font text-xl font-bold">Rekap Transaksi Harian</h2>
@@ -259,12 +274,17 @@ function renderTxList(){
 }
 
 /* ================= DOKUMEN CETAK ================= */
-function kop(){ return `<div style="text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:12px">
-  <div style="font-size:13px;font-weight:700;letter-spacing:1px">BANK MINI • SMK YP.79 MAJALAYA</div>
-  <div style="font-size:11px">Jl. Pendidikan Majalaya • Telp Sekolah • Tabungan Siswa</div></div>`; }
-function ttd(){ const t=tglID(todayISO()); return `<div style="display:flex;justify-content:space-between;margin-top:24px;font-size:12px">
-  <div style="text-align:center">Majalaya, ${t}<br>Petugas Bank Mini<br><br><br><br>( ............................ )</div>
-  <div style="text-align:center">Nasabah<br><br><br><br><br>( ............................ )</div></div>
+/* Profil nota: tersimpan per browser petugas */
+const DEF_PROFILE={sekolah:"BANK MINI • SMK YP.79 MAJALAYA",alamat:"Jl. Pendidikan Majalaya",telp:"Telp Sekolah",petugas:""};
+function getProfile(){ try{ return Object.assign({},DEF_PROFILE,LS.get("bm2_profile",{})); }catch(e){ return Object.assign({},DEF_PROFILE); } }
+function loadProfile(){ const p=getProfile(); if(!$("p-sekolah"))return; $("p-sekolah").value=p.sekolah; $("p-alamat").value=p.alamat; $("p-telp").value=p.telp; $("p-petugas").value=p.petugas; }
+function kop(){ const p=getProfile(); return `<div style="text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:12px">
+  <div style="font-size:13px;font-weight:700;letter-spacing:1px">${esc(p.sekolah)}</div>
+  <div style="font-size:11px">${esc(p.alamat)}${p.telp?" • "+esc(p.telp):""} • Tabungan Siswa</div></div>`; }
+function ttd(siswa){ const p=getProfile(); const t=tglID(todayISO()); const dots="( ............................ )";
+  return `<div style="display:flex;justify-content:space-between;margin-top:24px;font-size:12px">
+  <div style="text-align:center">Majalaya, ${t}<br>Petugas Bank Mini<br><br><br><br>${p.petugas?esc(p.petugas):dots}</div>
+  <div style="text-align:center">Nasabah${siswa?"<br>"+esc(siswa):"<br><br>"}<br><br><br>${siswa?esc(siswa):dots}</div></div>
   <div style="font-size:10px;color:#555;margin-top:12px">Dicetak: ${new Date().toLocaleString("id-ID")} • Dokumen ini sah tanpa cap jika data sesuai sistem.</div>`; }
 function docBuku(nis){
   const s=cacheStudents[nis]; const nama=s?s.nama:"-";
@@ -274,7 +294,7 @@ function docBuku(nis){
   const t=totals(list);
   return `${kop()}<h3 style="text-align:center">BUKU TABUNGAN SISWA</h3>
   <p style="font-size:12px">NIS: <b>${esc(nis)}</b> &nbsp; Nama: <b>${esc(nama)}</b> &nbsp; Saldo Akhir: <b>${rp(saldo)}</b><br>Total Setoran: ${rp(t.in)} • Total Penarikan: ${rp(t.out)}</p>
-  <table><thead><tr><th>No</th><th>Tanggal</th><th>Uraian</th><th>Setoran</th><th>Penarikan</th><th>Saldo</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Belum ada transaksi</td></tr>'}</tbody></table>${ttd()}`;
+  <table><thead><tr><th>No</th><th>Tanggal</th><th>Uraian</th><th>Setoran</th><th>Penarikan</th><th>Saldo</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Belum ada transaksi</td></tr>'}</tbody></table>${ttd(nama)}`;
 }
 function docHarian(tanggal){
   const list=cacheTx.filter(t=>t.tanggal===tanggal);
@@ -283,7 +303,7 @@ function docHarian(tanggal){
   return `${kop()}<h3 style="text-align:center">REKAP TRANSAKSI HARIAN</h3>
   <p style="font-size:12px;text-align:center">Tanggal: <b>${tglID(tanggal)}</b> • Transaksi: <b>${list.length}</b></p>
   <p style="font-size:12px">Total Setoran: <b>${rp(t.in)}</b> • Total Penarikan: <b>${rp(t.out)}</b> • Selisih: <b>${rp(t.in-t.out)}</b></p>
-  <table><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Tidak ada transaksi pada tanggal ini</td></tr>'}</tbody></table>${ttd()}`;
+  <table><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Tidak ada transaksi pada tanggal ini</td></tr>'}</tbody></table>${ttd("")}`;
 }
 /* Preview → isi modal + area cetak, lalu tampilkan modal */
 function preview(html){ $("print-preview").innerHTML=html; $("print-area").innerHTML=html; $("print-modal").classList.add("open"); }
@@ -333,6 +353,36 @@ $("btn-reset-pin").onclick=async()=>{
 };
 $("cari").oninput=renderTxList;
 
+/* Template CSV import */
+$("btn-template").onclick=()=>{
+  const csv="nis,nama,pin\n2627001,\"CONTOH NAMA SISWA\",7001\n2627002,\"CONTOH LAIN\",7002\n";
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="template-nasabah.csv"; a.click();
+};
+
+/* Pengaturan nota */
+$("btn-profile").onclick=()=>{
+  LS.set("bm2_profile",{sekolah:$("p-sekolah").value.trim()||DEF_PROFILE.sekolah,alamat:$("p-alamat").value.trim(),telp:$("p-telp").value.trim(),petugas:$("p-petugas").value.trim().toUpperCase()});
+  alert("Pengaturan nota tersimpan — berlaku di semua cetakan berikutnya.");
+};
+
+/* Scan barcode/QR NIS pakai kamera */
+let qrObj=null;
+async function stopScan(){ try{ if(qrObj) await qrObj.stop(); }catch(e){} try{ if(qrObj) await qrObj.clear(); }catch(e){} const s=$("scanner"); if(s) s.classList.add("hidden"); }
+$("btn-scan").onclick=async()=>{
+  if(!window.Html5Qrcode){ alert("Library scan gagal dimuat — pastikan internet aktif lalu muat ulang."); return; }
+  $("scanner").classList.remove("hidden");
+  try{
+    qrObj=qrObj||new Html5Qrcode("qr-reader");
+    await qrObj.start({facingMode:"environment"},{fps:10,qrbox:250},(txt)=>{
+      const nis=String(txt||"").toUpperCase().replace(/\s+/g,"").replace(/^NIS[:\-]?/,"");
+      if(!nis) return;
+      $("f-nis").value=nis; $("f-nis").dispatchEvent(new Event("input"));
+      stopScan(); $("f-nominal").focus();
+    });
+  }catch(e){ alert("Kamera tidak bisa dibuka ("+e+"). Ketik NIS manual."); stopScan(); }
+};
+$("btn-scan-stop").onclick=stopScan;
+
 /* Import CSV akun nasabah: nis,nama,pin */
 $("btn-import").onclick=async()=>{
   if(!isLogin()) return alert("Login dulu.");
@@ -368,7 +418,7 @@ $("btn-csv").onclick=()=>{
 /* Init */
 $("f-tanggal").value=todayISO(); $("lap-tanggal").value=todayISO();
 $("f-nis").addEventListener("input",e=>{ e.target.value=e.target.value.toUpperCase().replace(/\s/g,""); const k=cacheStudents[e.target.value]; if(k){ $("f-nama").value=k.nama; $("f-nama").readOnly=true; } else $("f-nama").readOnly=false; });
-refreshAuth(); (async()=>{ const seeded = await seedIfEmpty(); await refresh(); renderLap(); if(seeded) console.log("120 akun bawaan diimpor"); })();
+loadProfile(); refreshAuth(); (async()=>{ const seeded = await seedIfEmpty(); await refresh(); renderLap(); if(seeded) console.log("120 akun bawaan diimpor"); })();
 lucide.createIcons();
 </script>
 </body>
