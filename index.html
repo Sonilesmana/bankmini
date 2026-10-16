@@ -70,9 +70,8 @@ body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfd
       </div>
     </div>
     <nav class="flex flex-wrap gap-2 p-4 border-t border-emerald-900/10 bg-emerald-50/50">
-      <button class="tab-btn active" data-tab="nasabah">👤 Cek Nasabah</button>
-      <button class="tab-btn" data-tab="petugas">🔒 Petugas (input + laporan)</button>
-      <span class="ml-auto text-xs self-center text-slate-500" id="auth-state">Petugas: belum login</span>
+      <span class="tab-btn active">👤 Cek Nasabah</span>
+      <a href="petugas.html" class="tab-btn">🔒 Login Petugas</a>
     </nav>
   </header>
 
@@ -100,77 +99,7 @@ body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfd
     </div>
   </section>
 
-  <!-- ============ TAB PETUGAS ============ -->
-  <section id="tab-petugas" class="hidden bank-card rounded-3xl p-5 sm:p-7 mt-6">
-    <div id="login-box">
-      <h2 class="heading-font text-xl font-bold">Login Petugas</h2>
-      <p class="text-sm text-slate-600">Hanya 1 operator. Semua tombol Simpan/Hapus terkunci sebelum login.</p>
-      <div class="grid md:grid-cols-3 gap-3 mt-4">
-        <input id="login-user" class="form-field" placeholder="Username" autocomplete="username">
-        <input id="login-pass" class="form-field" type="password" placeholder="Password" autocomplete="current-password">
-        <button id="btn-login" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Masuk</button>
-      </div>
-      <p id="login-status" class="text-sm mt-2 font-medium text-red-700"></p>
-    </div>
-    <div id="petugas-box" class="hidden">
-      <div class="flex flex-wrap items-center gap-2">
-        <h2 class="heading-font text-xl font-bold">Input Transaksi (Petugas)</h2>
-        <button id="btn-logout" class="ml-auto rounded-xl border px-4 py-2 text-sm font-bold">Keluar</button>
-      </div>
-      <form id="tx-form" class="grid md:grid-cols-2 gap-3 mt-4">
-        <div><label class="text-xs font-bold">NIS</label><input id="f-nis" class="form-field" required autocomplete="off"></div>
-        <div><label class="text-xs font-bold">Nama siswa</label><input id="f-nama" class="form-field uppercase" required></div>
-        <div><label class="text-xs font-bold">PIN nasabah (wajib jika NIS baru, 4–6 digit)</label><input id="f-pin" class="form-field" inputmode="numeric" maxlength="6" placeholder="Contoh: 1234"></div>
-        <div><label class="text-xs font-bold">Jenis</label><select id="f-jenis" class="form-field"><option>Setoran</option><option>Penarikan</option></select></div>
-        <div><label class="text-xs font-bold">Nominal (Rp)</label><input id="f-nominal" class="form-field" inputmode="numeric" required placeholder="50000"></div>
-        <div><label class="text-xs font-bold">Tanggal</label><input id="f-tanggal" class="form-field" type="date" required></div>
-        <div class="md:col-span-2"><label class="text-xs font-bold">Keterangan</label><input id="f-ket" class="form-field uppercase" placeholder="SETORAN SNIN / PENARIKAN ..."></div>
-        <div class="md:col-span-2 flex flex-wrap gap-2">
-          <button class="rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white" type="submit">💾 Simpan Transaksi</button>
-          <button id="btn-reset-pin" type="button" class="rounded-xl border px-4 py-3 text-sm font-bold">Reset PIN nasabah ini</button>
-        </div>
-      </form>
-      <p id="tx-status" class="text-sm mt-2 font-medium"></p>
-      <div class="mt-5 border-t pt-4">
-        <div class="flex flex-wrap gap-2 items-center">
-          <h3 class="font-bold">Transaksi terakhir</h3>
-          <input id="cari" class="form-field !w-auto ml-auto" placeholder="Cari NIS / nama..." style="max-width:220px">
-        </div>
-        <div id="tx-list" class="space-y-2 mt-3"></div>
-      </div>
-      <div class="mt-5 border-t pt-4 grid md:grid-cols-3 gap-3">
-        <div><label class="text-xs font-bold">Ganti username</label><input id="set-user" class="form-field"></div>
-        <div><label class="text-xs font-bold">Ganti password</label><input id="set-pass" class="form-field" type="password"></div>
-        <div class="flex items-end"><button id="btn-ganti" class="rounded-xl border px-4 py-3 text-sm font-bold w-full">Ubah Login</button></div>
-      </div>
-      <div class="mt-5 border-t pt-4">
-        <h3 class="font-bold">Import Akun Nasabah (CSV: nis,nama,pin)</h3>
-        <p class="text-xs text-slate-500">File <b>seed-nasabah.csv</b> di repo berisi 120 akun (PIN = 4 digit terakhir NIS). Pilih file → akun dibuat sekaligus. PIN tersimpan sebagai hash.</p>
-        <div class="flex flex-wrap gap-2 mt-2 items-center">
-          <input id="import-csv" type="file" accept=".csv" class="text-sm">
-          <button id="btn-import" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">⬆ Import Sekarang</button>
-        </div>
-        <p id="import-status" class="text-sm mt-2 font-medium"></p>
-      </div>
-      <div class="mt-5 border-t pt-4">
-    <h2 class="heading-font text-xl font-bold">Rekap Transaksi Harian</h2>
-    <p class="text-sm text-slate-600">Khusus petugas. Pilih tanggal → preview → print / simpan PDF.</p>
-    <div class="grid md:grid-cols-3 gap-3 mt-4">
-      <input id="lap-tanggal" class="form-field" type="date">
-      <button id="btn-lap" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Tampilkan</button>
-      <button id="btn-csv" class="rounded-xl border px-4 py-3 text-sm font-bold">⬇ Export CSV</button>
-    </div>
-    <div id="lap-ringkas" class="grid sm:grid-cols-3 gap-3 mt-4"></div>
-    <div class="overflow-x-auto mt-3"><table class="w-full text-sm" id="lap-table"><thead><tr class="text-left text-xs text-slate-500"><th class="p-2">Tanggal</th><th class="p-2">NIS</th><th class="p-2">Nama</th><th class="p-2">Jenis</th><th class="p-2">Keterangan</th><th class="p-2 text-right">Nominal</th></tr></thead><tbody id="lap-body"></tbody></table></div>
-    <div class="flex flex-wrap gap-2 mt-4">
-      <button id="btn-preview-harian" class="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-bold text-emerald-900">👁️ Preview Cetak</button>
-      <button id="btn-print-harian" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">🖨️ Print / PDF Harian</button>
-    </div>
-      </div>
-    </div>
-  </section>
-
-  <footer class="text-center text-xs text-slate-500 py-6">Bank Mini SMK YP.79 Majalaya • v2 • <span id="foot-mode"></span></footer>
+    <footer class="text-center text-xs text-slate-500 py-6">Bank Mini SMK YP.79 Majalaya • v2 • <span id="foot-mode"></span></footer>
 </div>
 
 <!-- ============ MODAL PREVIEW ============ -->
@@ -267,6 +196,7 @@ async function refreshAuth(){ const on=isLogin(); $("login-box").classList.toggl
 /* ================= RENDER ================= */
 function renderSummary(){ const t=totals(cacheTx); $("deposit-total").textContent=rp(t.in); $("withdrawal-total").textContent=rp(t.out); $("balance-value").textContent=rp(t.in-t.out); }
 function renderTxList(){
+  if(!$("cari"))return;
   const q=($("cari").value||"").toUpperCase();
   const list=[...cacheTx].reverse().filter(t=>!q||t.nis.includes(q)||(t.nama||"").toUpperCase().includes(q)).slice(0,50);
   $("tx-list").innerHTML=list.map(t=>`<div class="flex items-center gap-2 border rounded-xl p-3 text-sm">
@@ -314,10 +244,7 @@ function preview(html){ $("print-preview").innerHTML=html; $("print-area").inner
 function doPrint(){ /* pastikan area cetak sudah terisi dari preview */ window.print(); }
 
 /* ================= EVENT ================= */
-document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active")); b.classList.add("active");
-  ["nasabah","petugas"].forEach(t=>$("tab-"+t).classList.toggle("hidden",t!==b.dataset.tab));
-});
+
 $("btn-modal-close").onclick=()=>$("print-modal").classList.remove("open");
 $("btn-modal-print").onclick=doPrint;
 
@@ -339,81 +266,8 @@ $("btn-cek").onclick=async()=>{
 $("btn-preview-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); };
 $("btn-print-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); setTimeout(doPrint,300); };
 
-/* Petugas login */
-$("btn-login").onclick=async()=>{
-  const a=await getAdmin();
-  if($("login-user").value.trim()===a.u && await sha256($("login-pass").value)===a.h){ sessionStorage.setItem("bm2_sess","1"); $("login-status").textContent=""; refreshAuth(); }
-  else $("login-status").textContent="Username / password salah.";
-};
-$("btn-logout").onclick=()=>{ sessionStorage.removeItem("bm2_sess"); refreshAuth(); };
-$("btn-ganti").onclick=async()=>{
-  const u=$("set-user").value.trim(), p=$("set-pass").value;
-  if(u.length<3||p.length<4) return alert("Username min 3, password min 4 karakter.");
-  LS.set("bm2_admin",{u,h:await sha256(p)}); alert("Login petugas diperbarui."); $("set-pass").value="";
-};
-
-/* Simpan transaksi */
-$("tx-form").onsubmit=async e=>{
-  e.preventDefault();
-  if(!isLogin()) return alert("Login petugas dulu.");
-  const nis=$("f-nis").value.trim().toUpperCase(), nama=$("f-nama").value.trim().toUpperCase();
-  const jenis=$("f-jenis").value, nominal=Number(String($("f-nominal").value).replace(/\D/g,""));
-  const tanggal=$("f-tanggal").value, ket=$("f-ket").value.trim().toUpperCase()||"-", pin=$("f-pin").value.trim();
-  if(!nis||!nama||!nominal||nominal<=0||!tanggal){ $("tx-status").textContent="Lengkapi NIS, nama, nominal, tanggal."; return; }
-  const known=cacheStudents[nis];
-  if(known && known.nama!==nama){ $("tx-status").textContent="Nama tidak cocok dengan NIS tersimpan ("+known.nama+")."; return; }
-  if(!known){ if(!/^\d{4,6}$/.test(pin)){ $("tx-status").textContent="NIS baru: wajib isi PIN 4–6 digit untuk nasabah."; return; }
-    await Store.upsertStudent(nis,nama,await sha256(pin));
-  }
-  if(jenis==="Penarikan" && nominal>saldoNIS(nis)){ $("tx-status").textContent="Saldo tidak cukup. Sisa "+rp(saldoNIS(nis)); return; }
-  await Store.addTx({nis,nama,jenis,nominal,tanggal,keterangan:ket,createdBy:"petugas"});
-  $("tx-status").textContent="Tersimpan ✔ (PIN nasabah "+(known?"tetap":"baru: "+pin)+")";
-  e.target.reset(); $("f-tanggal").value=todayISO(); $("f-jenis").value="Setoran"; await refresh();
-};
-$("btn-reset-pin").onclick=async()=>{
-  if(!isLogin()) return alert("Login dulu.");
-  const nis=$("f-nis").value.trim().toUpperCase(); if(!nis||!cacheStudents[nis]) return alert("NIS tidak dikenal.");
-  const p=prompt("PIN baru 4–6 digit untuk NIS "+nis+":"); if(!p||!/^\d{4,6}$/.test(p)) return alert("PIN tidak valid.");
-  await Store.upsertStudent(nis,cacheStudents[nis].nama,await sha256(p)); await refresh(); alert("PIN direset. PIN baru: "+p+" (catat & berikan ke nasabah).");
-};
-$("cari").oninput=renderTxList;
-
-/* Import CSV akun nasabah: nis,nama,pin */
-$("btn-import").onclick=async()=>{
-  if(!isLogin()) return alert("Login dulu.");
-  const f=$("import-csv").files[0]; if(!f) return alert("Pilih file CSV dulu (seed-nasabah.csv).");
-  const text=await f.text();
-  const lines=text.split(/\r?\n/).slice(1); let ok=0, fail=0;
-  $("import-status").textContent="Mengimpor...";
-  for(const ln of lines){
-    const m=ln.match(/^\s*([^,]+),"?(.*?)"?,\s*(\d{4,6})\s*$/); if(!m){ if(ln.trim()) fail++; continue; }
-    const nis=m[1].trim().toUpperCase(), nama=m[2].trim().toUpperCase(), pin=m[3].trim();
-    if(!nis||!nama){ fail++; continue; }
-    await Store.upsertStudent(nis,nama,await sha256(pin)); ok++;
-  }
-  await refresh(); $("import-status").textContent=`Selesai: ${ok} akun dibuat/diperbarui, ${fail} baris dilewati.`;
-};
-
-/* Laporan */
-function renderLap(){
-  const t=$("lap-tanggal").value||todayISO(); const list=cacheTx.filter(x=>x.tanggal===t); const s=totals(list);
-  $("lap-ringkas").innerHTML=`<div class="rounded-xl bg-emerald-50 p-3 text-sm">Setoran<b class="block">${rp(s.in)}</b></div><div class="rounded-xl bg-orange-50 p-3 text-sm">Penarikan<b class="block">${rp(s.out)}</b></div><div class="rounded-xl bg-slate-50 p-3 text-sm">Selisih<b class="block">${rp(s.in-s.out)}</b> (${list.length} trx)</div>`;
-  $("lap-body").innerHTML=list.map(x=>`<tr class="border-b"><td class="p-2">${tglID(x.tanggal)}</td><td class="p-2">${esc(x.nis)}</td><td class="p-2">${esc(x.nama)}</td><td class="p-2">${esc(x.jenis)}</td><td class="p-2">${esc(x.keterangan||"-")}</td><td class="p-2 text-right font-bold">${rp(x.nominal)}</td></tr>`).join("")||`<tr><td colspan="6" class="p-4 text-center text-slate-500">Tidak ada transaksi.</td></tr>`;
-}
-$("btn-lap").onclick=()=>{ if(!isLogin()) return alert("Laporan khusus petugas — login dulu."); renderLap(); };
-$("btn-preview-harian").onclick=()=>{ if(!isLogin()) return alert("Login dulu."); preview(docHarian($("lap-tanggal").value||todayISO())); };
-$("btn-print-harian").onclick=()=>{ if(!isLogin()) return alert("Login dulu."); preview(docHarian($("lap-tanggal").value||todayISO())); setTimeout(doPrint,300); };
-$("btn-csv").onclick=()=>{
-  if(!isLogin()) return alert("Login dulu.");
-  const t=$("lap-tanggal").value||todayISO(); const list=cacheTx.filter(x=>x.tanggal===t);
-  const csv="tanggal,nis,nama,jenis,keterangan,nominal\n"+list.map(x=>[x.tanggal,x.nis,'"'+x.nama+'"','"'+x.jenis+'"','"'+(x.keterangan||"")+'"',x.nominal].join(",")).join("\n");
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="harian-"+t+".csv"; a.click();
-};
-
 /* Init */
-$("f-tanggal").value=todayISO(); $("lap-tanggal").value=todayISO();
-$("f-nis").addEventListener("input",e=>{ e.target.value=e.target.value.toUpperCase().replace(/\s/g,""); const k=cacheStudents[e.target.value]; if(k){ $("f-nama").value=k.nama; $("f-nama").readOnly=true; } else $("f-nama").readOnly=false; });
-refreshAuth(); (async()=>{ const seeded = await seedIfEmpty(); await refresh(); renderLap(); if(seeded) console.log("120 akun bawaan diimpor"); })();
+(async()=>{ try{ await seedIfEmpty(); }catch(e){} await refresh(); })();
 lucide.createIcons();
 </script>
 </body>
