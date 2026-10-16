@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Petugas — Bank Mini SMK YP.79</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+<!-- Firebase opsional: isi config di bawah untuk mode ONLINE. Jika kosong, otomatis pakai LocalStorage (offline/demo). -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17342f;--leaf:#247a61;--line:#dce8df}
+*{box-sizing:border-box}
+body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfdfb}
+.heading-font{font-family:"Fraunces",serif}
+.bank-card{border:1px solid var(--line);box-shadow:0 14px 35px rgba(25,68,54,.08);background:#fff}
+.form-field{width:100%;border:1px solid #cdded3;border-radius:.8rem;padding:.75rem .85rem;outline:none;background:#fffefb;color:var(--ink)}
+.form-field:focus{border-color:#247a61;box-shadow:0 0 0 3px rgba(36,122,97,.15)}
+.form-field:read-only{background:#eef7f1;color:#35554a}
+.tab-btn{padding:.6rem 1rem;border-radius:.8rem;font-weight:700;font-size:.85rem;border:1px solid var(--line);background:#fff}
+.tab-btn.active{background:#174c3e;color:#fff;border-color:#174c3e}
+.doc{font-family:"DM Sans",sans-serif;color:#111}
+.doc h3{margin:0}
+.doc table{width:100%;border-collapse:collapse;font-size:12px}
+.doc th,.doc td{border:1px solid #333;padding:6px 8px;text-align:left;vertical-align:top}
+.doc th{background:#f0f0f0}
+.doc .num{text-align:right;white-space:nowrap}
+#print-modal{display:none}
+#print-modal.open{display:flex}
+/* ===== CETAK: hanya #print-area yang keluar di kertas ===== */
+#print-area{display:none}
+@media print{
+  body{background:#fff !important}
+  body *{visibility:hidden !important}
+  #print-area,#print-area *{visibility:visible !important}
+  #print-area{display:block !important;position:absolute !important;left:0;top:0;width:100% !important;padding:16px !important;background:#fff !important}
+  #print-modal{position:static !important;display:block !important}
+  #print-modal .no-print{display:none !important}
+  .no-print{display:none !important}
+}
+@media (max-width:640px){.hero-grid{grid-template-columns:1fr !important}}
+</style>
+</head>
+<body>
+<div class="max-w-7xl mx-auto px-4 py-6 no-print">
+  <header class="bank-card rounded-3xl overflow-hidden mb-6">
+    <div class="grid md:grid-cols-2 hero-grid">
+      <div class="p-6 sm:p-8">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-800 text-white"><i data-lucide="landmark" class="h-5 w-5"></i></div>
+          <span class="text-sm font-bold tracking-wide text-emerald-800">SMK YP.79 MAJALAYA • BANK MINI</span>
+        </div>
+        <h1 class="heading-font text-3xl sm:text-4xl font-bold leading-tight">Bank Mini v2 — Preview &amp; Cetak, Cek Online Nasabah</h1>
+        <p class="mt-3 text-sm leading-relaxed text-slate-600">1 file HTML. Mode <b>Petugas</b> dikunci username + password (hanya 1 operator bisa input/hapus). Mode <b>Nasabah</b> cek saldo sendiri pakai NIS + PIN, bisa preview &amp; cetak buku tabungan. Laporan harian bisa preview &amp; print.</p>
+        <div class="mt-4 flex flex-wrap gap-2 text-xs">
+          <span id="mode-badge" class="rounded-full bg-slate-100 px-3 py-1 font-bold">MODE: Publik (online)</span>
+          <span class="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-800">Single operator</span>
+        </div>
+      </div>
+      <div class="bg-gradient-to-br from-emerald-900 via-emerald-700 to-emerald-500 text-white p-6 sm:p-8">
+        <p class="text-sm font-semibold text-emerald-100">RINGKASAN DANA</p>
+        <p id="balance-value" class="heading-font text-4xl font-bold mt-1">Rp0</p>
+        <div class="grid grid-cols-2 gap-3 mt-5 text-sm">
+          <div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Total Setoran</p><p id="deposit-total" class="font-bold">Rp0</p></div>
+          <div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Total Penarikan</p><p id="withdrawal-total" class="font-bold">Rp0</p></div>
+        </div>
+        <p class="mt-4 text-xs text-emerald-100">Akun petugas dipegang 1 operator. Nasabah cek saldo pakai NIS + PIN.</p>
+      </div>
+    </div>
+    <nav class="flex flex-wrap gap-2 p-4 border-t border-emerald-900/10 bg-emerald-50/50">
+      <a href="index.html" class="tab-btn">← Cek Nasabah</a>
+      <span class="tab-btn active">🔒 Panel Petugas</span>
+      <span class="ml-auto text-xs self-center text-slate-500" id="auth-state">Petugas: belum login</span>
+    </nav>
+  </header>
+
+  <!-- ============ TAB PETUGAS ============ -->
+  <section id="tab-petugas" class="bank-card rounded-3xl p-5 sm:p-7 mt-6">
+    <div id="login-box">
+      <h2 class="heading-font text-xl font-bold">Login Petugas</h2>
+      <p class="text-sm text-slate-600">Hanya 1 operator. Semua tombol Simpan/Hapus terkunci sebelum login.</p>
+      <div class="grid md:grid-cols-3 gap-3 mt-4">
+        <input id="login-user" class="form-field" placeholder="Username" autocomplete="username">
+        <input id="login-pass" class="form-field" type="password" placeholder="Password" autocomplete="current-password">
+        <button id="btn-login" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Masuk</button>
+      </div>
+      <p id="login-status" class="text-sm mt-2 font-medium text-red-700"></p>
+    </div>
+    <div id="petugas-box" class="hidden">
+      <div class="flex flex-wrap items-center gap-2">
+        <h2 class="heading-font text-xl font-bold">Input Transaksi (Petugas)</h2>
+        <button id="btn-logout" class="ml-auto rounded-xl border px-4 py-2 text-sm font-bold">Keluar</button>
+      </div>
+      <form id="tx-form" class="grid md:grid-cols-2 gap-3 mt-4">
+        <div><label class="text-xs font-bold">NIS</label><input id="f-nis" class="form-field" required autocomplete="off"></div>
+        <div><label class="text-xs font-bold">Nama siswa</label><input id="f-nama" class="form-field uppercase" required></div>
+        <div><label class="text-xs font-bold">PIN nasabah (wajib jika NIS baru, 4–6 digit)</label><input id="f-pin" class="form-field" inputmode="numeric" maxlength="6" placeholder="Contoh: 1234"></div>
+        <div><label class="text-xs font-bold">Jenis</label><select id="f-jenis" class="form-field"><option>Setoran</option><option>Penarikan</option></select></div>
+        <div><label class="text-xs font-bold">Nominal (Rp)</label><input id="f-nominal" class="form-field" inputmode="numeric" required placeholder="50000"></div>
+        <div><label class="text-xs font-bold">Tanggal</label><input id="f-tanggal" class="form-field" type="date" required></div>
+        <div class="md:col-span-2"><label class="text-xs font-bold">Keterangan</label><input id="f-ket" class="form-field uppercase" placeholder="SETORAN SNIN / PENARIKAN ..."></div>
+        <div class="md:col-span-2 flex flex-wrap gap-2">
+          <button class="rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white" type="submit">💾 Simpan Transaksi</button>
+          <button id="btn-reset-pin" type="button" class="rounded-xl border px-4 py-3 text-sm font-bold">Reset PIN nasabah ini</button>
+        </div>
+      </form>
+      <p id="tx-status" class="text-sm mt-2 font-medium"></p>
+      <div class="mt-5 border-t pt-4">
+        <div class="flex flex-wrap gap-2 items-center">
+          <h3 class="font-bold">Transaksi terakhir</h3>
+          <input id="cari" class="form-field !w-auto ml-auto" placeholder="Cari NIS / nama..." style="max-width:220px">
+        </div>
+        <div id="tx-list" class="space-y-2 mt-3"></div>
+      </div>
+      <div class="mt-5 border-t pt-4 grid md:grid-cols-3 gap-3">
+        <div><label class="text-xs font-bold">Ganti username</label><input id="set-user" class="form-field"></div>
+        <div><label class="text-xs font-bold">Ganti password</label><input id="set-pass" class="form-field" type="password"></div>
+        <div class="flex items-end"><button id="btn-ganti" class="rounded-xl border px-4 py-3 text-sm font-bold w-full">Ubah Login</button></div>
+      </div>
+      <div class="mt-5 border-t pt-4">
+        <h3 class="font-bold">Import Akun Nasabah (CSV: nis,nama,pin)</h3>
+        <p class="text-xs text-slate-500">File <b>seed-nasabah.csv</b> di repo berisi 120 akun (PIN = 4 digit terakhir NIS). Pilih file → akun dibuat sekaligus. PIN tersimpan sebagai hash.</p>
+        <div class="flex flex-wrap gap-2 mt-2 items-center">
+          <input id="import-csv" type="file" accept=".csv" class="text-sm">
+          <button id="btn-import" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">⬆ Import Sekarang</button>
+        </div>
+        <p id="import-status" class="text-sm mt-2 font-medium"></p>
+      </div>
+      <div class="mt-5 border-t pt-4">
+    <h2 class="heading-font text-xl font-bold">Rekap Transaksi Harian</h2>
+    <p class="text-sm text-slate-600">Khusus petugas. Pilih tanggal → preview → print / simpan PDF.</p>
+    <div class="grid md:grid-cols-3 gap-3 mt-4">
+      <input id="lap-tanggal" class="form-field" type="date">
+      <button id="btn-lap" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Tampilkan</button>
+      <button id="btn-csv" class="rounded-xl border px-4 py-3 text-sm font-bold">⬇ Export CSV</button>
+    </div>
+    <div id="lap-ringkas" class="grid sm:grid-cols-3 gap-3 mt-4"></div>
+    <div class="overflow-x-auto mt-3"><table class="w-full text-sm" id="lap-table"><thead><tr class="text-left text-xs text-slate-500"><th class="p-2">Tanggal</th><th class="p-2">NIS</th><th class="p-2">Nama</th><th class="p-2">Jenis</th><th class="p-2">Keterangan</th><th class="p-2 text-right">Nominal</th></tr></thead><tbody id="lap-body"></tbody></table></div>
+    <div class="flex flex-wrap gap-2 mt-4">
+      <button id="btn-preview-harian" class="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-bold text-emerald-900">👁️ Preview Cetak</button>
+      <button id="btn-print-harian" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">🖨️ Print / PDF Harian</button>
+    </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-slate-500 py-6">Bank Mini SMK YP.79 Majalaya • v2 • <span id="foot-mode"></span></footer>
+</div>
+
+<!-- ============ MODAL PREVIEW ============ -->
+<div id="print-modal" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4 no-print">
+  <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+    <div class="flex items-center gap-2 p-4 border-b no-print">
+      <b>👁️ Preview Cetak</b>
+      <span class="text-xs text-slate-500">cek dulu sebelum print — ini yang keluar di kertas</span>
+      <span class="ml-auto flex gap-2">
+        <button id="btn-modal-print" class="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white">🖨️ Print</button>
+        <button id="btn-modal-close" class="rounded-xl border px-4 py-2 text-sm font-bold">Tutup</button>
+      </span>
+    </div>
+    <div class="overflow-auto p-4 bg-slate-100"><div id="print-preview" class="doc bg-white p-6 shadow"></div></div>
+  </div>
+</div>
+<!-- Area yang benar-benar dicetak -->
+<div id="print-area" class="doc"></div>
+
+<script>
+/* ================= KONFIG FIREBASE (isi untuk ONLINE) =================
+1. Firebase Console → buat project → Firestore Database → buat database.
+2. Project Settings → Add Web App → copy config ke bawah.
+3. Firestore collection: `students` (dok NIS) & `transactions` (auto-id).
+   Contoh rules minimal (sesuaikan kebutuhan sekolah):
+   rules_version='2'; service cloud.firestore { match /databases/{db}/documents {
+     match /students/{id} { allow read: if true; allow write: if true; }
+     match /transactions/{id} { allow read: if true; allow write: if true; }
+   }}
+   Untuk keamanan penuh: ganti `if true` pada write menjadi `request.auth != null`
+   + daftarkan 1 akun petugas di Authentication → lalu login petugas pakai email itu.
+====================================================================== */
+const firebaseConfig = { apiKey:"GANTI_API_KEY", authDomain:"GANTI.firebaseapp.com", projectId:"GANTI", appId:"GANTI" };
+// OPSI ONLINE TANPA FIREBASE: paste URL Web App Apps Script (Code.gs) di sini. Contoh: "https://script.google.com/macros/s/AKfy.../exec"
+const SHEETS_API = "";
+const USE_FIREBASE = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("GANTI");
+const USE_SHEETS = SHEETS_API.startsWith("https://");
+let db = null;
+if (USE_FIREBASE && window.firebase) { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
+document.getElementById("mode-badge").textContent = "MODE: Publik (online)";
+document.getElementById("foot-mode").textContent = "Publik (online)";
+/* 120 akun bawaan: PIN awal = 4 digit terakhir NIS. Dibuat otomatis saat database kosong. */
+const SEED_STUDENTS = {"2627001":{"nama":"M FAJAR RIZKI","pinHash":"931a4ddcbb47a6b7f558cd19c1405582f56dc9c2cd3590f47b5d8a0bde61c646"},"2627002":{"nama":"DANIEL AKBAR SAPUTRA","pinHash":"2378926a9bcc79f385034655e9f4e1027eb6ca96cfbfb872dcbb5d09dbbc196e"},"2627003":{"nama":"AYU SAISYAH SABRINA","pinHash":"46ece05546fb2626da88a216af6aa066b5172e824ad9eae6742d8e12ef6fbcc8"},"2627004":{"nama":"RAYNA SAFA NUR ALIKA","pinHash":"6586fa95bc8f7da4564098ce83dd9c4198669a5815704816a9a98da51284abbe"},"2627005":{"nama":"RADIT SAPUTRA","pinHash":"a441fa0449240669bde1c537efb9f5b1acee68ff3112b4a182063791d064e7f7"},"2627006":{"nama":"FAUZAN ALFARIZI","pinHash":"dcb66bc3eea43230a8e94433b96904f37fe1ef282bb97ee4f562bed048937f20"},"2627007":{"nama":"MARVEL PUTRA PRATAMA","pinHash":"afdcba2e170f8107dd68c4227dbbbf0bc44c7b9ae55506ca331c5c168840ee80"},"2627008":{"nama":"ZENAL PADILAH","pinHash":"b57104c5b0f19d02f813b4b1101b374bc9deec29d4cf98e459e9aaae837bfdbe"},"2627009":{"nama":"MUHAMAD RIFKY","pinHash":"7bf6d2e213a666d5fcec0259054c999d1c89d91fbc992f68a1f8dd6c5b7a6a03"},"2627010":{"nama":"SANDI MAULANA","pinHash":"1eb2cf2faec287ff82d265b863f54383712b6ff74d66dff812381353582362e2"},"2627011":{"nama":"ALIVHA SABILA","pinHash":"7fb8a56336e161678d48fee87ee481f9afda126e6ee86d139bbb9d23e9fed2d3"},"2627012":{"nama":"DANIA SITI FAUZIAH","pinHash":"21612db808d2becd4a2e1f489a1404583c7199cc162993c8cc167e4199505856"},"2627013":{"nama":"OVI SITI SOPIAH","pinHash":"6e237b1f8dc0da15957d168af0b2f58ce8dbc421671f0b38d1f39cc6026af032"},"2627014":{"nama":"FAHAS ARIF ALFARISI L","pinHash":"298435ff505cb8c31f9c5eb0adb5893b8c7c8aa61e1cfddf873326fe24b221be"},"2627015":{"nama":"AZZAHRA CHESARINI","pinHash":"bfabb6cf02daa6bf1d9e91c5d141f55e38b8460af403bc0a43726a8eab475855"},"2627016":{"nama":"NOVI MELATI PUTRI","pinHash":"2ac4aca6a7f6bd49aea9589fc03e5d250f7d358bdfa4ae37a4bbe488c44fa407"},"2627017":{"nama":"NOVA FITRIANI PUTRI","pinHash":"ffe1c50bbba807a6d3e871b590c293c54cd6a40600bdc874d025a856f149b2c8"},"2627018":{"nama":"REINA SAFAIRA","pinHash":"8861a3ae97ede98c3bee152161a40b497095a5b0e1f5785efdd46fcc4a984b86"},"2627019":{"nama":"RIZKI FIKRI M","pinHash":"1bd3b51d29f0e9bb39278cb0c3488415b6421464475449fcdf0ab526587e0695"},"2627020":{"nama":"AISYAH QUEEN","pinHash":"408af69c6a8b545827b22aa32f4c6657ffa6ec5f3b078ee16c181ed4ff7e2c79"},"2627021":{"nama":"RIZKI MUGHNI FIRMANSYAH","pinHash":"85847f141afd4fa068d83dadd5ef78c1a6a5d7f5cbf8923b0c9ee47ea6bccb74"},"2627022":{"nama":"MOCH RASYID SYABANA","pinHash":"d54f847d6adedb96a431c6a34ea69acf21a34a201b15ddbf14be900e777cf245"},"2627023":{"nama":"SELVI MUTIARA APRILIA","pinHash":"66c3230e5b7d13febf253c3e6560d82d367bace8c8b69d5a62ee8935aeb138e8"},"2627024":{"nama":"GERY SHAPUTRA","pinHash":"79ef20635e7df738c608556ee967254fc7cc01c8444fbd6f6bd9e083799592f4"},"2627025":{"nama":"ARYA SODIKIN FEBRIANSYAH","pinHash":"5ecebdecee0df016015356fac6f7f456ed7f441a2c00f4a06f4dd8fc0e3f952d"},"2627026":{"nama":"WILDAN PEBRIANSYAH","pinHash":"07361d83fcd20a07f7b0daa99765793f088908ef70c715ee3c0b6821e31f2dd0"},"2627027":{"nama":"IRGI ZENDRAYKA","pinHash":"9765da35893bd58fea4fffd7970047d7f1c09f826af672687df00fea4e870d55"},"2627028":{"nama":"RISMA REGINA PUTRI","pinHash":"cba3e87290564e255960bb3671bbe4636ef0d1d77b930428d375a5982d2f918f"},"2627029":{"nama":"SENDI","pinHash":"99c210ec946dcbc79d0c7aceaaa47db34174e6d2e6cad987b848cd95dabd228e"},"2627030":{"nama":"SOPIATUL","pinHash":"f5de9f3a9d0796ce2da39fa5556008d33f18c4769381388a4612e8a371d8f9b0"},"2627031":{"nama":"ANDINI APRILIAN","pinHash":"3f584eba5ee0bc275eee6cde5d8f7bae24744c19ee1c638c0ea16571cb34f492"},"2627032":{"nama":"RARA NUR ZELITA","pinHash":"b3259e046dfaf664d462e757d3890f7ddc473300923c2b482c21e33016d69955"},"2627033":{"nama":"HUSNA SABILA","pinHash":"b5887bceb66fbcc3206859d9032efcb9e71df4e2d869654c23471c20f58f0b8f"},"2627034":{"nama":"NURIANI","pinHash":"0929b60950cb33cc0a978ad4663611a54497bb4fe44b25327511bcd8292e45a8"},"2627035":{"nama":"RUDI RAMDANI","pinHash":"b68a62c18ccc22e7b74cc76ab134baeab74a7973a3a84c79cd75ce67dcb96c0d"},"2627036":{"nama":"ARESYA NURSYIFA","pinHash":"ad26d95ac0934dd600b69f6da0eef55fc5c741df128837456ef870f42e4e1f74"},"2627037":{"nama":"DWI SYILVA C.A","pinHash":"4baabeaad579e9201bfd7bc4dd8ba8392ce01ef09e8067c740adc882fdcba548"},"2627038":{"nama":"ALIYA NUR SIDIK","pinHash":"45dbc5d50e2da2279347ccee4b5c0c7e5ec72885e870e61abb2aa311700f9b3b"},"2627039":{"nama":"AYU CAHYATI","pinHash":"e48af3c3a2f5929b9b18c931e935531cf716ac4431844572e53a07e6d20283b2"},"2627040":{"nama":"MUHAMAD BARIK","pinHash":"5035f549bdb60899509e340ef887afdec2ef764df667411b398ca70d4734025e"},"2627041":{"nama":"WIWIN WINARTI","pinHash":"8beb6420a2670a1abc0f906a9953257a0921012677fefffc7e4c43a3f26cd522"},"2627042":{"nama":"CITRA DWI ARTHA","pinHash":"788fed4cefcf457afc6984efa7c19031a3325d2a93527293d2ced18bf9b7bb97"},"2627043":{"nama":"RISMA ASMARANI","pinHash":"3714b7f3b386c9febddd7990fe3f5dc95fbfc6e30dc04bdd3d76c03916d1f742"},"2627044":{"nama":"ANGGUN AYU SAUZIAH","pinHash":"285506a8469e1a75e8ddc9ac00e52d72af03d35d8923b1b199c45d7c770b1e14"},"2627045":{"nama":"RAFFA MUHAMMAD ISHAK","pinHash":"8093e894cb1aecf6b7426cecae20f468183f642d4af4c40c8b9b220540b489e3"},"2627046":{"nama":"SELLYANI PUTRI","pinHash":"989601093fb75ff464d4ef57460c8fe028afcf8a8bddca4ef03d9e3cf69ef381"},"2627047":{"nama":"MOCH KHAERUL AZAM","pinHash":"f0d18bbe64fe0063640f16284c7d529b1489f0a173fbe7116d5019c49a969aed"},"2627048":{"nama":"DILA NUR FADILAH","pinHash":"12190ac4625ecc77497ddb030e38274a4da66eda02323c41c57c5575ae18b0c1"},"2627049":{"nama":"NADHIRA AL NAZWA","pinHash":"f9a78464d1428b03ed04bcef318491614d11582986fa18447f72ae40b8a29d4d"},"2627050":{"nama":"ANISA ZULFIANI","pinHash":"5a2906b01a724ed734fc7e101e90ba651c44805bd73faaaef2fb65050ce6d93c"},"2627051":{"nama":"DIANA AYU LESTARI","pinHash":"2cb87e388022ab8da44427f1046aaf646a38bfa0f9cebefb2aad149b0b1ab8c3"},"2627052":{"nama":"RIRIN NOVITA SARI","pinHash":"4afec3170070d614ad2b7af613876bca7dbc4dd7b76399892099557b7a0eb106"},"2627053":{"nama":"RIZKI AJI","pinHash":"fe1a61777da3376c6a9ab2e28cfc7c1cb4b0ef3d0c08de162789245773d00bae"},"2627054":{"nama":"TASYA MARCELA","pinHash":"6f51629738bd8baef8189b884fd5527dd4dd542c1cfc171408bc33dc7e6f2f44"},"2627055":{"nama":"MURAENI","pinHash":"4508bd9ba16dee225c492a973c8df1a4794054be7c5b37ab3df6f2645fe174c9"},"2627056":{"nama":"NAZRIL RAMDHANI","pinHash":"fbf0c029676f97872638b20cc6933c5c3150a2f4270d5fdc5f72af5dce0405c2"},"2627057":{"nama":"REHAN","pinHash":"e8557282e35cc1c41b468ebbf01e770d9880bbb1b97fafb3e91ee7ec60affcbf"},"2627058":{"nama":"KAMAL PERMANA SIDIK","pinHash":"00bfd66f4773a21e290794d7b79da447491b2049889dd977771facbb18328da1"},"2627059":{"nama":"EKA AHMAD FALIH FAYYAD","pinHash":"c27ab1dc13eac84c9b242421162480f23e262181b24fed21fd54cb11a4ae1808"},"2627060":{"nama":"FIKRI RAHAYU","pinHash":"aa9972def72e0baac8461b61ab889a9b0451bf5deba42fbe1e7af10dd77c1558"},"2627061":{"nama":"AGUNG SOBANA","pinHash":"184dee9ffaf44fef39cebb6a0075f2007f37378cda54f2c26474c622cec09c9f"},"2627062":{"nama":"HAPID LUKMANUL HAKIM","pinHash":"4458b1d377c7d8d7df2126c2ff02277f9e03b2e1c6b68297f4ff90b0959da3c9"},"2627063":{"nama":"ADINATA AHMAD WINANDAR","pinHash":"82837d50572c36ebc90559bc99e03a96a098a2a73d588dc3ea052379bbe5d6f4"},"2627064":{"nama":"RIFAT MUHAMMAD ZIKRI","pinHash":"1f6909d0ba546f3291d3a8ffa1107868d370ade6c3df0393c4b944e3437291f0"},"2627065":{"nama":"AULIA PUTRI ANNISA","pinHash":"13324c96f0cb855057d3eaceeeb8ddc7ac38e8502c8ca130652414fc156c9bed"},"2627066":{"nama":"SYARIF HIDAYAT HADIYANA","pinHash":"079415c05a4e0befa999eb76f02aaca693ceda215cf162efb96cc74f0fd6e065"},"2627067":{"nama":"REY SYAFITRI LESTARI","pinHash":"ab4bf58f13f8a2e170ac00692f88f17ed96b5bf5288d7d38a3012f5a03ba7d44"},"2627068":{"nama":"MEISA WINAWATI","pinHash":"794608c9aeeaae5bedb0df6152764af2e94c7fc5f876cea842d84a0573336f37"},"2627069":{"nama":"FIKRI ALHAFSI","pinHash":"137aa6b571ed269de0c09256e00e7db23787f99ffca663a1896fecfe0c59d2f2"},"2627070":{"nama":"SIFA NUROHMAH","pinHash":"7a3ed03b12b784c2581ae5308e31f2a80248b481d8b0d369ee2193dcc3c1c4c5"},"2627071":{"nama":"SOFI NURHIKMAH","pinHash":"7602fff35469bf46e2cc9d8c34ba930786bd83cbd2b53c192a47cf3bcc3404d0"},"2627072":{"nama":"HAIKAL M RAMDAN","pinHash":"fd088aceb668709f9c385d5220ae2e8b8bf92e503366bba906fc11b41c51f120"},"2627073":{"nama":"DELVIN PRATAMA Y","pinHash":"f69b055e71f60f90caeb02466b4c6bdf0e8349afa5435fa5fe1e491e49c43b18"},"2627074":{"nama":"SILFIA RAHAYU","pinHash":"d8548ee669baebf96726e08767cc260028f6dc58404acc5c28f9025455779dbe"},"2627075":{"nama":"YANI","pinHash":"10af234996f886efe89e7dc7db0eba36e2b0adf9a4cbdc8ec146363e1885658b"},"2627076":{"nama":"HELMA RAHMAWATI","pinHash":"08cc82ce6856c15c713cbaa180eb7bc444e5c6b2abfa02b08e7d33c32cd24980"},"2627077":{"nama":"GILANG FATHAN MUBAROK","pinHash":"5c8315e9eb0175dca3148f242d37275fd0977202c53a15620a4bb4dcb67c4c25"},"2627078":{"nama":"YAKA PERMANA","pinHash":"1bf1888de5d3c99f6abbca4a7c15aa217ae1ca9a9f607f62535f63fe9f404f97"},"2627079":{"nama":"ARIFAH NURUL HIDAYAH","pinHash":"dfd1d4a1debd62f53b78d5b38f51488e706dab3059cc5c599074d286562aebf9"},"2627080":{"nama":"ZIA PUTRI DARMAWAN","pinHash":"931cf9e44e8af2433f540e456a73d7434234834db93568e93cd21c09eb2da882"},"2627081":{"nama":"SAEPULOH","pinHash":"de7d5e6247fb643608b4f5ef96726ec0c478e1499bcf1f650fa4cf118063dad0"},"2627082":{"nama":"VINA WULANDARI","pinHash":"a8464251068458b564f0502b2cde88477c9145374dbe933400d7457ccb1c4dc8"},"2627083":{"nama":"ROFI SITI SA'DIAH","pinHash":"6a34287a9fe2312a761bd5158586999535cbc2c83ded6817adeb8d394e0b9abd"},"2627084":{"nama":"AISYAH AGUSTIN","pinHash":"6d57a1ee6667d05a20b1c49535662abc0bc1412dee1e42cb61948d303d39b796"},"2627085":{"nama":"NADHIFA PUTRI SALSABILA","pinHash":"bb75dee316edb78b8d6ae1c9e7ef9b1739812fb548ee268e2b232f0e0c9556e4"},"2627086":{"nama":"MUTIARA KHOIRUNNISA","pinHash":"5b9b460fd7808dd0b71baf322a0aa00218489e546f71a69ec888b55c76acb787"},"2627087":{"nama":"MUHAMMAD NIZAM","pinHash":"12e3dbb55fb760f76ca1101fab94e07ec2152a9ddefb86dee3ec879cb7fa2e6d"},"2627088":{"nama":"DIKA MUHAMAD PUTRA","pinHash":"13c9370b295bef6567cbfc8586a3fd67c33c79581faf1e9be872a59c212e2b88"},"2627089":{"nama":"AJI ABDUL ROOZAK","pinHash":"c4f07589d0b116c1fe3b9aff918b6ba8e3e0fbf50709bb13bec287e5d741a900"},"2627090":{"nama":"SELA PUSPITA PUTRI","pinHash":"8f3bdfa3c1e4148a8b43287e18c6d1dff815d7c93acb73f3a70e71a51bbca1d9"},"2627091":{"nama":"REVALINA AULIA PUTRI","pinHash":"5e1febd65aa228086f8714d3a55da91d4030017974395ad8d38a1c095a05a28f"},"2627092":{"nama":"HILMAN MAULANA","pinHash":"1346eb73396d16d6d4783298e85a06d0b8df8e53e39cc7f661fa8c9f8a69d66a"},"2627093":{"nama":"MUHAMMAD FAQIH KHAIRULLAH","pinHash":"b4c6a08e528e8ea6219aa5a8b73bb4f07527e200d07f2c8f255425483b48d826"},"2627094":{"nama":"VICKY ANDIANSYAH","pinHash":"3d952e5622e6058b6f9faa04a744990f8a02d89d004ecfd0a43a3b98074a8d00"},"2627095":{"nama":"AQYLA SYAFKHA LAILAKAMIL","pinHash":"48f8054ac282ef551861fcf8dcf2162f8ae7fe72ce2cf22e10376d9d7f250ccf"},"2627096":{"nama":"RIVAL HERDIANSYAH","pinHash":"6129bdf179bacd2c2b006843113f7ae74881dd2e28d922c673bc4ae2c09bee6e"},"2627097":{"nama":"PARHAN NOPAL","pinHash":"5825f1c45eceb8ec32bf5e807664a17269c2d02889bc12d36931725f3a1a23fc"},"2627098":{"nama":"RESKI SUCHOU SURYADI","pinHash":"70109d7e8952f83f7cd2859bfba2f7b46bd7d93f5d6a749296c7c19db4f92deb"},"2627099":{"nama":"AYUS AISYAH SABRINA","pinHash":"75a1cc5a951382282fdd8faf3199e671a72704a38426a1914621aaeb59002c26"},"2627100":{"nama":"APRILIA DWI PUTRI","pinHash":"e36deec09aa73922d53279f29380a56ac3c593dd591855dd7aca1161aa501890"},"2627101":{"nama":"ALLIYA MAYSARA","pinHash":"6d8c92ccffa9576cc6d3a56158164f459c677ad72143d4b088bffcc1b01c32b5"},"2627102":{"nama":"SOFIAN MAULANA","pinHash":"83c7b7f65e6b54b0ff62a67caa6c71fe020a56acd802a0d370fc8cafa7b32a31"},"2627103":{"nama":"DEWI PUTRI CAHYANI","pinHash":"93d842ed8c8969c60d6807c4438a3765fe93e0de68a3301f5a6c997a045d26aa"},"2627104":{"nama":"ADDLIYA LUTHFI ALAZHHAR","pinHash":"fa37cba3a692257766014bec08da160195e033f00110cb1f54361c8d2805649e"},"2627105":{"nama":"M IQBAL NABHAN","pinHash":"28fdc9b17c2617c24aa8e5de1f6fdeacc361b03f33fc8ec41458b8dbcd3435ac"},"2627106":{"nama":"ADMIRAL BILLAH S","pinHash":"6cbc4c3512a64b4beaed1735d070d5b947044c0e846be2901a3a9cfe62118dc4"},"2627107":{"nama":"VINA PEBRIANI","pinHash":"637cb12f3fc001d64873a45feca6788fe7ad74dbff7fa01341c49330a5cc2d62"},"2627108":{"nama":"AKBAR EKA SEPTIAN","pinHash":"fa86c63b0d4afca3891d0986470c5fe3570c77e405f0625e7579e33f58b13ddb"},"2627109":{"nama":"IQBAL DWI SOPIAN","pinHash":"a7fb57bd513d9874df197fdf3c8c5f243361e53e32a41dc22fffa4873e5875c9"},"2627110":{"nama":"NURZAHRA FADILLAH","pinHash":"02f3aaffd8d57cf51fe9b5cbf035944a4251104db9abfbac0ce9a317964445fa"},"2627111":{"nama":"LISTIANI NURAENI","pinHash":"8482730c0bb7c7b0494ffdf34a70e0e2fd8d16037d0023d6636909bbee443fb0"},"2627112":{"nama":"M RIDWAN RIZUQI","pinHash":"e950edf04f10999f21228307f91aa1d3268425e07d4c05c9f6a9076571b447b8"},"2627113":{"nama":"ADAM","pinHash":"e02be5962e51741e00991efc7883e7c79f57fc42d718d8d6442c4cf0f1b8f69b"},"2627114":{"nama":"M ILHAM KHOERUL FALAH","pinHash":"dbe1b5021e98aa53eebb2824c3e2ff5c351f0e358e186d5ea8f0a985e8a803ec"},"2627115":{"nama":"ADILLA JAVA RADITYA D","pinHash":"96c832c65106349f8288b9c943573ba738671b8a8578bbf3c8951d45939870b0"},"2627116":{"nama":"AZMI TAHTA ERINA RAHMI","pinHash":"b9577e917f054c3b7c481faf30528b5cce82b753f56cfe0a94f06649b6daf958"},"2627117":{"nama":"RIDWAN MAULANA","pinHash":"cc830be9dae15b28f32c242fad7ed204df8d18c761555a3b710cf319d5ad4cb8"},"2627118":{"nama":"ZAKI RAJENDRA","pinHash":"eace48a195da1586d8c63aae19aa2be8ddd8712c79f29a2c399e3ae59212a887"},"2627119":{"nama":"IMAM SAEPULLOH IBRAHIM","pinHash":"46d4b8ad705c555d8f4e8191b5c54a489818548f3157151a9abba25d7fa93e87"},"2627120":{"nama":"IRFAN MAULANA","pinHash":"3b38239024a8c579f48e9cc3b3c5bf5aeaa06b841877488b90ffa07e2e73180c"}};
+async function seedIfEmpty(){ try{ const s = await Store.students(); if(Object.keys(s).length) return false; const k = Object.keys(SEED_STUDENTS); for(const nis of k){ await Store.upsertStudent(nis, SEED_STUDENTS[nis].nama, SEED_STUDENTS[nis].pinHash); } return true; }catch(e){ return false; } }
+
+/* ================= UTIL ================= */
+const $ = id => document.getElementById(id);
+const rp = n => "Rp" + (Number(n)||0).toLocaleString("id-ID") + ",00";
+const todayISO = () => { const d=new Date(); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const tglID = v => { if(!v) return "-"; try{ return new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(v+"T00:00:00")); }catch(e){ return v; } };
+async function sha256(s){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ================= STORAGE (Firebase / Lokal) ================= */
+const LS = { get:(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } }, set:(k,v)=>localStorage.setItem(k, JSON.stringify(v)) };
+const Store = {
+  async students(){
+    if(db){ const s=await db.collection("students").get(); const o={}; s.forEach(d=>o[d.id]=d.data()); return o; }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=students")).json(); const o={}; r.forEach(x=>o[String(x.nis)]={nama:x.nama,pinHash:x.pinHash}); return o; }
+    return LS.get("bm2_students",{});
+  },
+  async transactions(){
+    if(db){ const s=await db.collection("transactions").orderBy("tanggal","asc").get(); return s.docs.map(d=>({id:d.id,...d.data()})); }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=transactions")).json(); return r.map(x=>({id:String(x.id),nis:String(x.nis),nama:x.nama,jenis:x.jenis,nominal:Number(x.nominal),tanggal:x.tanggal,keterangan:x.keterangan})); }
+    return LS.get("bm2_tx",[]);
+  },
+  async upsertStudent(nis,nama,pinHash){
+    if(db){ await db.collection("students").doc(nis).set({nama,pinHash,updatedAt:new Date().toISOString()},{merge:true}); return; }
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify({action:"upsertStudent",nis,nama,pinHash})}); return; }
+    const s=LS.get("bm2_students",{}); s[nis]={nama,pinHash}; LS.set("bm2_students",s);
+  },
+  async addTx(tx){
+    if(db){ const r=await db.collection("transactions").add({...tx,createdAt:new Date().toISOString()}); return r.id; }
+    const id="L"+Date.now();
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify({action:"addTx",id,...tx})}); return id; }
+    const a=LS.get("bm2_tx",[]); a.push({id,...tx}); LS.set("bm2_tx",a); return id;
+  },
+  async delTx(id){
+    if(db){ await db.collection("transactions").doc(id).delete(); return; }
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify({action:"delTx",id})}); return; }
+    LS.set("bm2_tx", LS.get("bm2_tx",[]).filter(t=>t.id!==id));
+  }
+};
+let cacheStudents={}, cacheTx=[];
+async function refresh(){ cacheStudents=await Store.students(); cacheTx=await Store.transactions(); renderSummary(); renderTxList(); }
+function saldoNIS(nis){ return cacheTx.filter(t=>t.nis===nis).reduce((s,t)=>s+(t.jenis==="Setoran"?+t.nominal:-t.nominal),0); }
+function totals(list){ return list.reduce((a,t)=>{ if(t.jenis==="Setoran")a.in+=+t.nominal; else a.out+=+t.nominal; return a; },{in:0,out:0}); }
+
+/* ================= AUTH PETUGAS (1 operator) ================= */
+async function getAdmin(){ const NH="e6c63d929943091c6066cb13e98bdb1744e02e2a9dbcefb205dfcb8a421bb72a", OH="472c6266c924851d80dfc3183540b8b5ea3f899ee29149d10cdd901f3105efc9"; const a=LS.get("bm2_admin",null); if(a && a.h!==OH) return a; const d={u:"admin",h:NH}; LS.set("bm2_admin",d); return d; }
+const isLogin = () => sessionStorage.getItem("bm2_sess")==="1";
+async function refreshAuth(){ const on=isLogin(); $("login-box").classList.toggle("hidden",on); $("petugas-box").classList.toggle("hidden",!on); $("auth-state").textContent="Petugas: "+(on?"LOGIN ✔":"belum login"); }
+
+/* ================= RENDER ================= */
+function renderSummary(){ const t=totals(cacheTx); $("deposit-total").textContent=rp(t.in); $("withdrawal-total").textContent=rp(t.out); $("balance-value").textContent=rp(t.in-t.out); }
+function renderTxList(){
+  const q=($("cari").value||"").toUpperCase();
+  const list=[...cacheTx].reverse().filter(t=>!q||t.nis.includes(q)||(t.nama||"").toUpperCase().includes(q)).slice(0,50);
+  $("tx-list").innerHTML=list.map(t=>`<div class="flex items-center gap-2 border rounded-xl p-3 text-sm">
+    <div class="min-w-0"><b>${esc(t.nama)}</b> <span class="text-xs bg-slate-100 rounded-full px-2 py-0.5 font-bold">NIS ${esc(t.nis)}</span>
+    <span class="text-xs rounded-full px-2 py-0.5 font-bold ${t.jenis==="Setoran"?"bg-emerald-100 text-emerald-800":"bg-orange-100 text-orange-800"}">${esc(t.jenis)}</span>
+    <div class="text-xs text-slate-500">${tglID(t.tanggal)} • ${esc(t.keterangan||"-")}</div></div>
+    <b class="ml-auto whitespace-nowrap">${t.jenis==="Setoran"?"+":"−"} ${rp(t.nominal)}</b>
+    <button class="text-red-600 text-xs font-bold border rounded-lg px-2 py-1" data-del="${t.id}">Hapus</button></div>`).join("")||`<p class="text-sm text-slate-500">Belum ada transaksi.</p>`;
+  $("tx-list").querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{
+    if(!isLogin()) return alert("Login petugas dulu.");
+    if(!confirm("Hapus transaksi ini?")) return;
+    await Store.delTx(b.dataset.del); await refresh();
+  });
+}
+
+/* ================= DOKUMEN CETAK ================= */
+function kop(){ return `<div style="text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:12px">
+  <div style="font-size:13px;font-weight:700;letter-spacing:1px">BANK MINI • SMK YP.79 MAJALAYA</div>
+  <div style="font-size:11px">Jl. Pendidikan Majalaya • Telp Sekolah • Tabungan Siswa</div></div>`; }
+function ttd(){ const t=tglID(todayISO()); return `<div style="display:flex;justify-content:space-between;margin-top:24px;font-size:12px">
+  <div style="text-align:center">Majalaya, ${t}<br>Petugas Bank Mini<br><br><br><br>( ............................ )</div>
+  <div style="text-align:center">Nasabah<br><br><br><br><br>( ............................ )</div></div>
+  <div style="font-size:10px;color:#555;margin-top:12px">Dicetak: ${new Date().toLocaleString("id-ID")} • Dokumen ini sah tanpa cap jika data sesuai sistem.</div>`; }
+function docBuku(nis){
+  const s=cacheStudents[nis]; const nama=s?s.nama:"-";
+  const list=cacheTx.filter(t=>t.nis===nis).sort((a,b)=>a.tanggal.localeCompare(b.tanggal));
+  let saldo=0; const rows=list.map((t,i)=>{ saldo+=t.jenis==="Setoran"?+t.nominal:-t.nominal;
+    return `<tr><td>${i+1}</td><td>${tglID(t.tanggal)}</td><td>${esc(t.keterangan||"-")}</td><td class="num">${t.jenis==="Setoran"?rp(t.nominal):"-"}</td><td class="num">${t.jenis==="Penarikan"?rp(t.nominal):"-"}</td><td class="num"><b>${rp(saldo)}</b></td></tr>`; }).join("");
+  const t=totals(list);
+  return `${kop()}<h3 style="text-align:center">BUKU TABUNGAN SISWA</h3>
+  <p style="font-size:12px">NIS: <b>${esc(nis)}</b> &nbsp; Nama: <b>${esc(nama)}</b> &nbsp; Saldo Akhir: <b>${rp(saldo)}</b><br>Total Setoran: ${rp(t.in)} • Total Penarikan: ${rp(t.out)}</p>
+  <table><thead><tr><th>No</th><th>Tanggal</th><th>Uraian</th><th>Setoran</th><th>Penarikan</th><th>Saldo</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Belum ada transaksi</td></tr>'}</tbody></table>${ttd()}`;
+}
+function docHarian(tanggal){
+  const list=cacheTx.filter(t=>t.tanggal===tanggal);
+  const t=totals(list);
+  const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nis)}</td><td>${esc(x.nama)}</td><td>${esc(x.jenis)}</td><td>${esc(x.keterangan||"-")}</td><td class="num">${rp(x.nominal)}</td></tr>`).join("");
+  return `${kop()}<h3 style="text-align:center">REKAP TRANSAKSI HARIAN</h3>
+  <p style="font-size:12px;text-align:center">Tanggal: <b>${tglID(tanggal)}</b> • Transaksi: <b>${list.length}</b></p>
+  <p style="font-size:12px">Total Setoran: <b>${rp(t.in)}</b> • Total Penarikan: <b>${rp(t.out)}</b> • Selisih: <b>${rp(t.in-t.out)}</b></p>
+  <table><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Tidak ada transaksi pada tanggal ini</td></tr>'}</tbody></table>${ttd()}`;
+}
+/* Preview → isi modal + area cetak, lalu tampilkan modal */
+function preview(html){ $("print-preview").innerHTML=html; $("print-area").innerHTML=html; $("print-modal").classList.add("open"); }
+function doPrint(){ /* pastikan area cetak sudah terisi dari preview */ window.print(); }
+
+/* ================= EVENT ================= */
+
+$("btn-modal-close").onclick=()=>$("print-modal").classList.remove("open");
+$("btn-modal-print").onclick=doPrint;
+
+/* Nasabah cek */
+let cekNIS=null;
+$("btn-cek").onclick=async()=>{
+  const nis=$("cek-nis").value.trim().toUpperCase(); const pin=$("cek-pin").value.trim();
+  if(!nis||!pin){ $("cek-status").textContent="Isi NIS dan PIN."; return; }
+  const s=cacheStudents[nis];
+  if(!s){ $("cek-status").textContent="NIS tidak ditemukan. Hubungi petugas."; $("cek-hasil").classList.add("hidden"); return; }
+  if(await sha256(pin)!==s.pinHash){ $("cek-status").textContent="PIN salah."; $("cek-hasil").classList.add("hidden"); return; }
+  cekNIS=nis;
+  const list=cacheTx.filter(t=>t.nis===nis); const t=totals(list);
+  $("cek-saldo").textContent=rp(t.in-t.out); $("cek-masuk").textContent=rp(t.in); $("cek-keluar").textContent=rp(t.out);
+  $("cek-ident").textContent="NIS "+nis+" • "+s.nama;
+  $("cek-riwayat").innerHTML=[...list].reverse().slice(0,30).map(x=>`<div class="border rounded-xl p-3 text-sm flex gap-2"><div><b>${esc(x.jenis)}</b> • ${tglID(x.tanggal)}<div class="text-xs text-slate-500">${esc(x.keterangan||"-")}</div></div><b class="ml-auto">${x.jenis==="Setoran"?"+":"−"} ${rp(x.nominal)}</b></div>`).join("")||"Belum ada transaksi.";
+  $("cek-status").textContent=""; $("cek-hasil").classList.remove("hidden");
+};
+$("btn-preview-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); };
+$("btn-print-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); setTimeout(doPrint,300); };
+
+/* Petugas login */
+$("btn-login").onclick=async()=>{
+  const a=await getAdmin();
+  if($("login-user").value.trim()===a.u && await sha256($("login-pass").value)===a.h){ sessionStorage.setItem("bm2_sess","1"); $("login-status").textContent=""; refreshAuth(); }
+  else $("login-status").textContent="Username / password salah.";
+};
+$("btn-logout").onclick=()=>{ sessionStorage.removeItem("bm2_sess"); refreshAuth(); };
+$("btn-ganti").onclick=async()=>{
+  const u=$("set-user").value.trim(), p=$("set-pass").value;
+  if(u.length<3||p.length<4) return alert("Username min 3, password min 4 karakter.");
+  LS.set("bm2_admin",{u,h:await sha256(p)}); alert("Login petugas diperbarui."); $("set-pass").value="";
+};
+
+/* Simpan transaksi */
+$("tx-form").onsubmit=async e=>{
+  e.preventDefault();
+  if(!isLogin()) return alert("Login petugas dulu.");
+  const nis=$("f-nis").value.trim().toUpperCase(), nama=$("f-nama").value.trim().toUpperCase();
+  const jenis=$("f-jenis").value, nominal=Number(String($("f-nominal").value).replace(/\D/g,""));
+  const tanggal=$("f-tanggal").value, ket=$("f-ket").value.trim().toUpperCase()||"-", pin=$("f-pin").value.trim();
+  if(!nis||!nama||!nominal||nominal<=0||!tanggal){ $("tx-status").textContent="Lengkapi NIS, nama, nominal, tanggal."; return; }
+  const known=cacheStudents[nis];
+  if(known && known.nama!==nama){ $("tx-status").textContent="Nama tidak cocok dengan NIS tersimpan ("+known.nama+")."; return; }
+  if(!known){ if(!/^\d{4,6}$/.test(pin)){ $("tx-status").textContent="NIS baru: wajib isi PIN 4–6 digit untuk nasabah."; return; }
+    await Store.upsertStudent(nis,nama,await sha256(pin));
+  }
+  if(jenis==="Penarikan" && nominal>saldoNIS(nis)){ $("tx-status").textContent="Saldo tidak cukup. Sisa "+rp(saldoNIS(nis)); return; }
+  await Store.addTx({nis,nama,jenis,nominal,tanggal,keterangan:ket,createdBy:"petugas"});
+  $("tx-status").textContent="Tersimpan ✔ (PIN nasabah "+(known?"tetap":"baru: "+pin)+")";
+  e.target.reset(); $("f-tanggal").value=todayISO(); $("f-jenis").value="Setoran"; await refresh();
+};
+$("btn-reset-pin").onclick=async()=>{
+  if(!isLogin()) return alert("Login dulu.");
+  const nis=$("f-nis").value.trim().toUpperCase(); if(!nis||!cacheStudents[nis]) return alert("NIS tidak dikenal.");
+  const p=prompt("PIN baru 4–6 digit untuk NIS "+nis+":"); if(!p||!/^\d{4,6}$/.test(p)) return alert("PIN tidak valid.");
+  await Store.upsertStudent(nis,cacheStudents[nis].nama,await sha256(p)); await refresh(); alert("PIN direset. PIN baru: "+p+" (catat & berikan ke nasabah).");
+};
+$("cari").oninput=renderTxList;
+
+/* Import CSV akun nasabah: nis,nama,pin */
+$("btn-import").onclick=async()=>{
+  if(!isLogin()) return alert("Login dulu.");
+  const f=$("import-csv").files[0]; if(!f) return alert("Pilih file CSV dulu (seed-nasabah.csv).");
+  const text=await f.text();
+  const lines=text.split(/\r?\n/).slice(1); let ok=0, fail=0;
+  $("import-status").textContent="Mengimpor...";
+  for(const ln of lines){
+    const m=ln.match(/^\s*([^,]+),"?(.*?)"?,\s*(\d{4,6})\s*$/); if(!m){ if(ln.trim()) fail++; continue; }
+    const nis=m[1].trim().toUpperCase(), nama=m[2].trim().toUpperCase(), pin=m[3].trim();
+    if(!nis||!nama){ fail++; continue; }
+    await Store.upsertStudent(nis,nama,await sha256(pin)); ok++;
+  }
+  await refresh(); $("import-status").textContent=`Selesai: ${ok} akun dibuat/diperbarui, ${fail} baris dilewati.`;
+};
+
+/* Laporan */
+function renderLap(){
+  const t=$("lap-tanggal").value||todayISO(); const list=cacheTx.filter(x=>x.tanggal===t); const s=totals(list);
+  $("lap-ringkas").innerHTML=`<div class="rounded-xl bg-emerald-50 p-3 text-sm">Setoran<b class="block">${rp(s.in)}</b></div><div class="rounded-xl bg-orange-50 p-3 text-sm">Penarikan<b class="block">${rp(s.out)}</b></div><div class="rounded-xl bg-slate-50 p-3 text-sm">Selisih<b class="block">${rp(s.in-s.out)}</b> (${list.length} trx)</div>`;
+  $("lap-body").innerHTML=list.map(x=>`<tr class="border-b"><td class="p-2">${tglID(x.tanggal)}</td><td class="p-2">${esc(x.nis)}</td><td class="p-2">${esc(x.nama)}</td><td class="p-2">${esc(x.jenis)}</td><td class="p-2">${esc(x.keterangan||"-")}</td><td class="p-2 text-right font-bold">${rp(x.nominal)}</td></tr>`).join("")||`<tr><td colspan="6" class="p-4 text-center text-slate-500">Tidak ada transaksi.</td></tr>`;
+}
+$("btn-lap").onclick=()=>{ if(!isLogin()) return alert("Laporan khusus petugas — login dulu."); renderLap(); };
+$("btn-preview-harian").onclick=()=>{ if(!isLogin()) return alert("Login dulu."); preview(docHarian($("lap-tanggal").value||todayISO())); };
+$("btn-print-harian").onclick=()=>{ if(!isLogin()) return alert("Login dulu."); preview(docHarian($("lap-tanggal").value||todayISO())); setTimeout(doPrint,300); };
+$("btn-csv").onclick=()=>{
+  if(!isLogin()) return alert("Login dulu.");
+  const t=$("lap-tanggal").value||todayISO(); const list=cacheTx.filter(x=>x.tanggal===t);
+  const csv="tanggal,nis,nama,jenis,keterangan,nominal\n"+list.map(x=>[x.tanggal,x.nis,'"'+x.nama+'"','"'+x.jenis+'"','"'+(x.keterangan||"")+'"',x.nominal].join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="harian-"+t+".csv"; a.click();
+};
+
+/* Init */
+$("f-tanggal").value=todayISO(); $("lap-tanggal").value=todayISO();
+$("f-nis").addEventListener("input",e=>{ e.target.value=e.target.value.toUpperCase().replace(/\s/g,""); const k=cacheStudents[e.target.value]; if(k){ $("f-nama").value=k.nama; $("f-nama").readOnly=true; } else $("f-nama").readOnly=false; });
+refreshAuth(); (async()=>{ const seeded = await seedIfEmpty(); await refresh(); renderLap(); if(seeded) console.log("120 akun bawaan diimpor"); })();
+lucide.createIcons();
+</script>
+</body>
+</html>
