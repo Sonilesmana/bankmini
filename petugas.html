@@ -294,24 +294,6 @@ function doPrint(){ /* pastikan area cetak sudah terisi dari preview */ window.p
 $("btn-modal-close").onclick=()=>$("print-modal").classList.remove("open");
 $("btn-modal-print").onclick=doPrint;
 
-/* Nasabah cek */
-let cekNIS=null;
-$("btn-cek").onclick=async()=>{
-  const nis=$("cek-nis").value.trim().toUpperCase(); const pin=$("cek-pin").value.trim();
-  if(!nis||!pin){ $("cek-status").textContent="Isi NIS dan PIN."; return; }
-  const s=cacheStudents[nis];
-  if(!s){ $("cek-status").textContent="NIS tidak ditemukan. Hubungi petugas."; $("cek-hasil").classList.add("hidden"); return; }
-  if(await sha256(pin)!==s.pinHash){ $("cek-status").textContent="PIN salah."; $("cek-hasil").classList.add("hidden"); return; }
-  cekNIS=nis;
-  const list=cacheTx.filter(t=>t.nis===nis); const t=totals(list);
-  $("cek-saldo").textContent=rp(t.in-t.out); $("cek-masuk").textContent=rp(t.in); $("cek-keluar").textContent=rp(t.out);
-  $("cek-ident").textContent="NIS "+nis+" • "+s.nama;
-  $("cek-riwayat").innerHTML=[...list].reverse().slice(0,30).map(x=>`<div class="border rounded-xl p-3 text-sm flex gap-2"><div><b>${esc(x.jenis)}</b> • ${tglID(x.tanggal)}<div class="text-xs text-slate-500">${esc(x.keterangan||"-")}</div></div><b class="ml-auto">${x.jenis==="Setoran"?"+":"−"} ${rp(x.nominal)}</b></div>`).join("")||"Belum ada transaksi.";
-  $("cek-status").textContent=""; $("cek-hasil").classList.remove("hidden");
-};
-$("btn-preview-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); };
-$("btn-print-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); setTimeout(doPrint,300); };
-
 /* Petugas login */
 $("btn-login").onclick=async()=>{
   const a=await getAdmin();
