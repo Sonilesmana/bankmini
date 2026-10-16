@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank Mini SMK YP.79 Majalaya — v2</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+<!-- Firebase opsional: isi config di bawah untuk mode ONLINE. Jika kosong, otomatis pakai LocalStorage (offline/demo). -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17342f;--leaf:#247a61;--line:#dce8df}
+*{box-sizing:border-box}
+body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfdfb}
+.heading-font{font-family:"Fraunces",serif}
+.bank-card{border:1px solid var(--line);box-shadow:0 14px 35px rgba(25,68,54,.08);background:#fff}
+.form-field{width:100%;border:1px solid #cdded3;border-radius:.8rem;padding:.75rem .85rem;outline:none;background:#fffefb;color:var(--ink)}
+.form-field:focus{border-color:#247a61;box-shadow:0 0 0 3px rgba(36,122,97,.15)}
+.form-field:read-only{background:#eef7f1;color:#35554a}
+.tab-btn{padding:.6rem 1rem;border-radius:.8rem;font-weight:700;font-size:.85rem;border:1px solid var(--line);background:#fff}
+.tab-btn.active{background:#174c3e;color:#fff;border-color:#174c3e}
+.doc{font-family:"DM Sans",sans-serif;color:#111}
+.doc h3{margin:0}
+.doc table{width:100%;border-collapse:collapse;font-size:12px}
+.doc th,.doc td{border:1px solid #333;padding:6px 8px;text-align:left;vertical-align:top}
+.doc th{background:#f0f0f0}
+.doc .num{text-align:right;white-space:nowrap}
+#print-modal{display:none}
+#print-modal.open{display:flex}
+/* ===== CETAK: hanya #print-area yang keluar di kertas ===== */
+#print-area{display:none}
+@media print{
+  body{background:#fff !important}
+  body *{visibility:hidden !important}
+  #print-area,#print-area *{visibility:visible !important}
+  #print-area{display:block !important;position:absolute !important;left:0;top:0;width:100% !important;padding:16px !important;background:#fff !important}
+  #print-modal{position:static !important;display:block !important}
+  #print-modal .no-print{display:none !important}
+  .no-print{display:none !important}
+}
+@media (max-width:640px){.hero-grid{grid-template-columns:1fr !important}}
+</style>
+</head>
+<body>
+<div class="max-w-6xl mx-auto px-4 py-6 no-print">
+  <header class="bank-card rounded-3xl overflow-hidden mb-6">
+    <div class="grid md:grid-cols-2 hero-grid">
+      <div class="p-6 sm:p-8">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-800 text-white"><i data-lucide="landmark" class="h-5 w-5"></i></div>
+          <span class="text-sm font-bold tracking-wide text-emerald-800">SMK YP.79 MAJALAYA • BANK MINI</span>
+        </div>
+        <h1 class="heading-font text-3xl sm:text-4xl font-bold leading-tight">Bank Mini v2 — Preview &amp; Cetak, Cek Online Nasabah</h1>
+        <p class="mt-3 text-sm leading-relaxed text-slate-600">1 file HTML. Mode <b>Petugas</b> dikunci username + password (hanya 1 operator bisa input/hapus). Mode <b>Nasabah</b> cek saldo sendiri pakai NIS + PIN, bisa preview &amp; cetak buku tabungan. Laporan harian bisa preview &amp; print.</p>
+        <div class="mt-4 flex flex-wrap gap-2 text-xs">
+          <span id="mode-badge" class="rounded-full bg-slate-100 px-3 py-1 font-bold">MODE: LOKAL (offline)</span>
+          <span class="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-800">Single operator</span>
+        </div>
+      </div>
+      <div class="bg-gradient-to-br from-emerald-900 via-emerald-700 to-emerald-500 text-white p-6 sm:p-8">
+        <p class="text-sm font-semibold text-emerald-100">RINGKASAN DANA</p>
+        <p id="balance-value" class="heading-font text-4xl font-bold mt-1">Rp0</p>
+        <div class="grid grid-cols-2 gap-3 mt-5 text-sm">
+          <div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Total Setoran</p><p id="deposit-total" class="font-bold">Rp0</p></div>
+          <div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Total Penarikan</p><p id="withdrawal-total" class="font-bold">Rp0</p></div>
+        </div>
+        <p class="mt-4 text-xs text-emerald-100">Default petugas — username: <b>admin</b> / password: <b>bankmini123</b> (segera ganti di tab Petugas).</p>
+      </div>
+    </div>
+    <nav class="flex flex-wrap gap-2 p-4 border-t border-emerald-900/10 bg-emerald-50/50">
+      <button class="tab-btn active" data-tab="nasabah">👤 Cek Nasabah</button>
+      <button class="tab-btn" data-tab="petugas">🔒 Petugas (input)</button>
+      <button class="tab-btn" data-tab="laporan">🖨️ Laporan Harian</button>
+      <span class="ml-auto text-xs self-center text-slate-500" id="auth-state">Petugas: belum login</span>
+    </nav>
+  </header>
+
+  <!-- ============ TAB NASABAH ============ -->
+  <section id="tab-nasabah" class="bank-card rounded-3xl p-5 sm:p-7">
+    <h2 class="heading-font text-xl font-bold">Cek Saldo Nasabah (Online)</h2>
+    <p class="text-sm text-slate-600">Masukkan NIS + PIN. PIN awal dibuat petugas saat setoran pertama. Nasabah hanya bisa lihat &amp; cetak miliknya sendiri.</p>
+    <div class="grid md:grid-cols-3 gap-3 mt-4">
+      <input id="cek-nis" class="form-field" placeholder="NIS, contoh: 12345" autocomplete="off">
+      <input id="cek-pin" class="form-field" type="password" placeholder="PIN (4–6 digit)" inputmode="numeric" maxlength="6">
+      <button id="btn-cek" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Cek Saldo</button>
+    </div>
+    <p id="cek-status" class="text-sm mt-2 font-medium"></p>
+    <div id="cek-hasil" class="hidden mt-5">
+      <div class="grid sm:grid-cols-3 gap-3">
+        <div class="rounded-xl bg-emerald-50 p-4"><p class="text-xs font-bold">SALDO</p><p id="cek-saldo" class="heading-font text-2xl font-bold">Rp0</p><p id="cek-ident" class="text-xs mt-1"></p></div>
+        <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs font-bold">SETORAN</p><p id="cek-masuk" class="heading-font text-xl font-bold">Rp0</p></div>
+        <div class="rounded-xl bg-orange-50 p-4"><p class="text-xs font-bold">PENARIKAN</p><p id="cek-keluar" class="heading-font text-xl font-bold">Rp0</p></div>
+      </div>
+      <div id="cek-riwayat" class="space-y-2 mt-4"></div>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button id="btn-preview-buku" class="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-bold text-emerald-900">👁️ Preview Buku Tabungan</button>
+        <button id="btn-print-buku" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">🖨️ Print Buku Tabungan</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB PETUGAS ============ -->
+  <section id="tab-petugas" class="hidden bank-card rounded-3xl p-5 sm:p-7 mt-6">
+    <div id="login-box">
+      <h2 class="heading-font text-xl font-bold">Login Petugas</h2>
+      <p class="text-sm text-slate-600">Hanya 1 operator. Semua tombol Simpan/Hapus terkunci sebelum login.</p>
+      <div class="grid md:grid-cols-3 gap-3 mt-4">
+        <input id="login-user" class="form-field" placeholder="Username" autocomplete="username">
+        <input id="login-pass" class="form-field" type="password" placeholder="Password" autocomplete="current-password">
+        <button id="btn-login" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Masuk</button>
+      </div>
+      <p id="login-status" class="text-sm mt-2 font-medium text-red-700"></p>
+    </div>
+    <div id="petugas-box" class="hidden">
+      <div class="flex flex-wrap items-center gap-2">
+        <h2 class="heading-font text-xl font-bold">Input Transaksi (Petugas)</h2>
+        <button id="btn-logout" class="ml-auto rounded-xl border px-4 py-2 text-sm font-bold">Keluar</button>
+      </div>
+      <form id="tx-form" class="grid md:grid-cols-2 gap-3 mt-4">
+        <div><label class="text-xs font-bold">NIS</label><input id="f-nis" class="form-field" required autocomplete="off"></div>
+        <div><label class="text-xs font-bold">Nama siswa</label><input id="f-nama" class="form-field uppercase" required></div>
+        <div><label class="text-xs font-bold">PIN nasabah (wajib jika NIS baru, 4–6 digit)</label><input id="f-pin" class="form-field" inputmode="numeric" maxlength="6" placeholder="Contoh: 1234"></div>
+        <div><label class="text-xs font-bold">Jenis</label><select id="f-jenis" class="form-field"><option>Setoran</option><option>Penarikan</option></select></div>
+        <div><label class="text-xs font-bold">Nominal (Rp)</label><input id="f-nominal" class="form-field" inputmode="numeric" required placeholder="50000"></div>
+        <div><label class="text-xs font-bold">Tanggal</label><input id="f-tanggal" class="form-field" type="date" required></div>
+        <div class="md:col-span-2"><label class="text-xs font-bold">Keterangan</label><input id="f-ket" class="form-field uppercase" placeholder="SETORAN SNIN / PENARIKAN ..."></div>
+        <div class="md:col-span-2 flex flex-wrap gap-2">
+          <button class="rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white" type="submit">💾 Simpan Transaksi</button>
+          <button id="btn-reset-pin" type="button" class="rounded-xl border px-4 py-3 text-sm font-bold">Reset PIN nasabah ini</button>
+        </div>
+      </form>
+      <p id="tx-status" class="text-sm mt-2 font-medium"></p>
+      <div class="mt-5 border-t pt-4">
+        <div class="flex flex-wrap gap-2 items-center">
+          <h3 class="font-bold">Transaksi terakhir</h3>
+          <input id="cari" class="form-field !w-auto ml-auto" placeholder="Cari NIS / nama..." style="max-width:220px">
+        </div>
+        <div id="tx-list" class="space-y-2 mt-3"></div>
+      </div>
+      <div class="mt-5 border-t pt-4 grid md:grid-cols-3 gap-3">
+        <div><label class="text-xs font-bold">Ganti username</label><input id="set-user" class="form-field"></div>
+        <div><label class="text-xs font-bold">Ganti password</label><input id="set-pass" class="form-field" type="password"></div>
+        <div class="flex items-end"><button id="btn-ganti" class="rounded-xl border px-4 py-3 text-sm font-bold w-full">Ubah Login</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB LAPORAN ============ -->
+  <section id="tab-laporan" class="hidden bank-card rounded-3xl p-5 sm:p-7 mt-6">
+    <h2 class="heading-font text-xl font-bold">Rekap Transaksi Harian</h2>
+    <p class="text-sm text-slate-600">Khusus petugas (harus login). Pilih tanggal → preview → print / simpan PDF.</p>
+    <div class="grid md:grid-cols-3 gap-3 mt-4">
+      <input id="lap-tanggal" class="form-field" type="date">
+      <button id="btn-lap" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Tampilkan</button>
+      <button id="btn-csv" class="rounded-xl border px-4 py-3 text-sm font-bold">⬇ Export CSV</button>
+    </div>
+    <div id="lap-ringkas" class="grid sm:grid-cols-3 gap-3 mt-4"></div>
+    <div class="overflow-x-auto mt-3"><table class="w-full text-sm" id="lap-table"><thead><tr class="text-left text-xs text-slate-500"><th class="p-2">Tanggal</th><th class="p-2">NIS</th><th class="p-2">Nama</th><th class="p-2">Jenis</th><th class="p-2">Keterangan</th><th class="p-2 text-right">Nominal</th></tr></thead><tbody id="lap-body"></tbody></table></div>
+    <div class="flex flex-wrap gap-2 mt-4">
+      <button id="btn-preview-harian" class="rounded-xl border border-emerald-800 px-4 py-2.5 text-sm font-bold text-emerald-900">👁️ Preview Cetak</button>
+      <button id="btn-print-harian" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">🖨️ Print / PDF Harian</button>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-slate-500 py-6">Bank Mini SMK YP.79 Majalaya • v2 • <span id="foot-mode"></span></footer>
+</div>
+
+<!-- ============ MODAL PREVIEW ============ -->
+<div id="print-modal" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4 no-print">
+  <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+    <div class="flex items-center gap-2 p-4 border-b no-print">
+      <b>👁️ Preview Cetak</b>
+      <span class="text-xs text-slate-500">cek dulu sebelum print — ini yang keluar di kertas</span>
+      <span class="ml-auto flex gap-2">
+        <button id="btn-modal-print" class="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white">🖨️ Print</button>
+        <button id="btn-modal-close" class="rounded-xl border px-4 py-2 text-sm font-bold">Tutup</button>
+      </span>
+    </div>
+    <div class="overflow-auto p-4 bg-slate-100"><div id="print-preview" class="doc bg-white p-6 shadow"></div></div>
+  </div>
+</div>
+<!-- Area yang benar-benar dicetak -->
+<div id="print-area" class="doc"></div>
+
+<script>
+/* ================= KONFIG FIREBASE (isi untuk ONLINE) =================
+1. Firebase Console → buat project → Firestore Database → buat database.
+2. Project Settings → Add Web App → copy config ke bawah.
+3. Firestore collection: `students` (dok NIS) & `transactions` (auto-id).
+   Contoh rules minimal (sesuaikan kebutuhan sekolah):
+   rules_version='2'; service cloud.firestore { match /databases/{db}/documents {
+     match /students/{id} { allow read: if true; allow write: if true; }
+     match /transactions/{id} { allow read: if true; allow write: if true; }
+   }}
+   Untuk keamanan penuh: ganti `if true` pada write menjadi `request.auth != null`
+   + daftarkan 1 akun petugas di Authentication → lalu login petugas pakai email itu.
+====================================================================== */
+const firebaseConfig = { apiKey:"GANTI_API_KEY", authDomain:"GANTI.firebaseapp.com", projectId:"GANTI", appId:"GANTI" };
+// OPSI ONLINE TANPA FIREBASE: paste URL Web App Apps Script (Code.gs) di sini. Contoh: "https://script.google.com/macros/s/AKfy.../exec"
+const SHEETS_API = "";
+const USE_FIREBASE = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("GANTI");
+const USE_SHEETS = SHEETS_API.startsWith("https://");
+let db = null;
+if (USE_FIREBASE && window.firebase) { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
+document.getElementById("mode-badge").textContent = USE_FIREBASE ? "MODE: ONLINE (Firebase)" : (USE_SHEETS ? "MODE: ONLINE (Google Sheets)" : "MODE: LOKAL (offline)");
+document.getElementById("foot-mode").textContent = USE_FIREBASE ? "Online Firebase" : (USE_SHEETS ? "Online Google Sheets" : "Lokal — isi SHEETS_API / firebaseConfig untuk online");
+
+/* ================= UTIL ================= */
+const $ = id => document.getElementById(id);
+const rp = n => "Rp" + (Number(n)||0).toLocaleString("id-ID") + ",00";
+const todayISO = () => { const d=new Date(); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const tglID = v => { if(!v) return "-"; try{ return new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(v+"T00:00:00")); }catch(e){ return v; } };
+async function sha256(s){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ================= STORAGE (Firebase / Lokal) ================= */
+const LS = { get:(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } }, set:(k,v)=>localStorage.setItem(k, JSON.stringify(v)) };
+const Store = {
+  async students(){
+    if(db){ const s=await db.collection("students").get(); const o={}; s.forEach(d=>o[d.id]=d.data()); return o; }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=students")).json(); const o={}; r.forEach(x=>o[String(x.nis)]={nama:x.nama,pinHash:x.pinHash}); return o; }
+    return LS.get("bm2_students",{});
+  },
+  async transactions(){
+    if(db){ const s=await db.collection("transactions").orderBy("tanggal","asc").get(); return s.docs.map(d=>({id:d.id,...d.data()})); }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=transactions")).json(); return r.map(x=>({id:String(x.id),nis:String(x.nis),nama:x.nama,jenis:x.jenis,nominal:Number(x.nominal),tanggal:x.tanggal,keterangan:x.keterangan})); }
+    return LS.get("bm2_tx",[]);
+  },
+  async upsertStudent(nis,nama,pinHash){
+    if(db){ await db.collection("students").doc(nis).set({nama,pinHash,updatedAt:new Date().toISOString()},{merge:true}); return; }
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify({action:"upsertStudent",nis,nama,pinHash})}); return; }
+    const s=LS.get("bm2_students",{}); s[nis]={nama,pinHash}; LS.set("bm2_students",s);
+  },
+  async addTx(tx){
+    if(db){ const r=await db.collection("transactions").add({...tx,createdAt:new Date().toISOString()}); return r.id; }
+    const id="L"+Date.now();
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify({action:"addTx",id,...tx})}); return id; }
+    const a=LS.get("bm2_tx",[]); a.push({id,...tx}); LS.set("bm2_tx",a); return id;
+  },
+  async delTx(id){
+    if(db){ await db.collection("transactions").doc(id).delete(); return; }
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify({action:"delTx",id})}); return; }
+    LS.set("bm2_tx", LS.get("bm2_tx",[]).filter(t=>t.id!==id));
+  }
+};
+let cacheStudents={}, cacheTx=[];
+async function refresh(){ cacheStudents=await Store.students(); cacheTx=await Store.transactions(); renderSummary(); renderTxList(); }
+function saldoNIS(nis){ return cacheTx.filter(t=>t.nis===nis).reduce((s,t)=>s+(t.jenis==="Setoran"?+t.nominal:-t.nominal),0); }
+function totals(list){ return list.reduce((a,t)=>{ if(t.jenis==="Setoran")a.in+=+t.nominal; else a.out+=+t.nominal; return a; },{in:0,out:0}); }
+
+/* ================= AUTH PETUGAS (1 operator) ================= */
+async function getAdmin(){ const a=LS.get("bm2_admin",null); if(a) return a; const h=await sha256("bankmini123"); const d={u:"admin",h}; LS.set("bm2_admin",d); return d; }
+const isLogin = () => sessionStorage.getItem("bm2_sess")==="1";
+async function refreshAuth(){ const on=isLogin(); $("login-box").classList.toggle("hidden",on); $("petugas-box").classList.toggle("hidden",!on); $("auth-state").textContent="Petugas: "+(on?"LOGIN ✔":"belum login"); }
+
+/* ================= RENDER ================= */
+function renderSummary(){ const t=totals(cacheTx); $("deposit-total").textContent=rp(t.in); $("withdrawal-total").textContent=rp(t.out); $("balance-value").textContent=rp(t.in-t.out); }
+function renderTxList(){
+  const q=($("cari").value||"").toUpperCase();
+  const list=[...cacheTx].reverse().filter(t=>!q||t.nis.includes(q)||(t.nama||"").toUpperCase().includes(q)).slice(0,50);
+  $("tx-list").innerHTML=list.map(t=>`<div class="flex items-center gap-2 border rounded-xl p-3 text-sm">
+    <div class="min-w-0"><b>${esc(t.nama)}</b> <span class="text-xs bg-slate-100 rounded-full px-2 py-0.5 font-bold">NIS ${esc(t.nis)}</span>
+    <span class="text-xs rounded-full px-2 py-0.5 font-bold ${t.jenis==="Setoran"?"bg-emerald-100 text-emerald-800":"bg-orange-100 text-orange-800"}">${esc(t.jenis)}</span>
+    <div class="text-xs text-slate-500">${tglID(t.tanggal)} • ${esc(t.keterangan||"-")}</div></div>
+    <b class="ml-auto whitespace-nowrap">${t.jenis==="Setoran"?"+":"−"} ${rp(t.nominal)}</b>
+    <button class="text-red-600 text-xs font-bold border rounded-lg px-2 py-1" data-del="${t.id}">Hapus</button></div>`).join("")||`<p class="text-sm text-slate-500">Belum ada transaksi.</p>`;
+  $("tx-list").querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{
+    if(!isLogin()) return alert("Login petugas dulu.");
+    if(!confirm("Hapus transaksi ini?")) return;
+    await Store.delTx(b.dataset.del); await refresh();
+  });
+}
+
+/* ================= DOKUMEN CETAK ================= */
+function kop(){ return `<div style="text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:12px">
+  <div style="font-size:13px;font-weight:700;letter-spacing:1px">BANK MINI • SMK YP.79 MAJALAYA</div>
+  <div style="font-size:11px">Jl. Pendidikan Majalaya • Telp Sekolah • Tabungan Siswa</div></div>`; }
+function ttd(){ const t=tglID(todayISO()); return `<div style="display:flex;justify-content:space-between;margin-top:24px;font-size:12px">
+  <div style="text-align:center">Majalaya, ${t}<br>Petugas Bank Mini<br><br><br><br>( ............................ )</div>
+  <div style="text-align:center">Nasabah<br><br><br><br><br>( ............................ )</div></div>
+  <div style="font-size:10px;color:#555;margin-top:12px">Dicetak: ${new Date().toLocaleString("id-ID")} • Dokumen ini sah tanpa cap jika data sesuai sistem.</div>`; }
+function docBuku(nis){
+  const s=cacheStudents[nis]; const nama=s?s.nama:"-";
+  const list=cacheTx.filter(t=>t.nis===nis).sort((a,b)=>a.tanggal.localeCompare(b.tanggal));
+  let saldo=0; const rows=list.map((t,i)=>{ saldo+=t.jenis==="Setoran"?+t.nominal:-t.nominal;
+    return `<tr><td>${i+1}</td><td>${tglID(t.tanggal)}</td><td>${esc(t.keterangan||"-")}</td><td class="num">${t.jenis==="Setoran"?rp(t.nominal):"-"}</td><td class="num">${t.jenis==="Penarikan"?rp(t.nominal):"-"}</td><td class="num"><b>${rp(saldo)}</b></td></tr>`; }).join("");
+  const t=totals(list);
+  return `${kop()}<h3 style="text-align:center">BUKU TABUNGAN SISWA</h3>
+  <p style="font-size:12px">NIS: <b>${esc(nis)}</b> &nbsp; Nama: <b>${esc(nama)}</b> &nbsp; Saldo Akhir: <b>${rp(saldo)}</b><br>Total Setoran: ${rp(t.in)} • Total Penarikan: ${rp(t.out)}</p>
+  <table><thead><tr><th>No</th><th>Tanggal</th><th>Uraian</th><th>Setoran</th><th>Penarikan</th><th>Saldo</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Belum ada transaksi</td></tr>'}</tbody></table>${ttd()}`;
+}
+function docHarian(tanggal){
+  const list=cacheTx.filter(t=>t.tanggal===tanggal);
+  const t=totals(list);
+  const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nis)}</td><td>${esc(x.nama)}</td><td>${esc(x.jenis)}</td><td>${esc(x.keterangan||"-")}</td><td class="num">${rp(x.nominal)}</td></tr>`).join("");
+  return `${kop()}<h3 style="text-align:center">REKAP TRANSAKSI HARIAN</h3>
+  <p style="font-size:12px;text-align:center">Tanggal: <b>${tglID(tanggal)}</b> • Transaksi: <b>${list.length}</b></p>
+  <p style="font-size:12px">Total Setoran: <b>${rp(t.in)}</b> • Total Penarikan: <b>${rp(t.out)}</b> • Selisih: <b>${rp(t.in-t.out)}</b></p>
+  <table><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Tidak ada transaksi pada tanggal ini</td></tr>'}</tbody></table>${ttd()}`;
+}
+/* Preview → isi modal + area cetak, lalu tampilkan modal */
+function preview(html){ $("print-preview").innerHTML=html; $("print-area").innerHTML=html; $("print-modal").classList.add("open"); }
+function doPrint(){ /* pastikan area cetak sudah terisi dari preview */ window.print(); }
+
+/* ================= EVENT ================= */
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active")); b.classList.add("active");
+  ["nasabah","petugas","laporan"].forEach(t=>$("tab-"+t).classList.toggle("hidden",t!==b.dataset.tab));
+});
+$("btn-modal-close").onclick=()=>$("print-modal").classList.remove("open");
+$("btn-modal-print").onclick=doPrint;
+
+/* Nasabah cek */
+let cekNIS=null;
+$("btn-cek").onclick=async()=>{
+  const nis=$("cek-nis").value.trim().toUpperCase(); const pin=$("cek-pin").value.trim();
+  if(!nis||!pin){ $("cek-status").textContent="Isi NIS dan PIN."; return; }
+  const s=cacheStudents[nis];
+  if(!s){ $("cek-status").textContent="NIS tidak ditemukan. Hubungi petugas."; $("cek-hasil").classList.add("hidden"); return; }
+  if(await sha256(pin)!==s.pinHash){ $("cek-status").textContent="PIN salah."; $("cek-hasil").classList.add("hidden"); return; }
+  cekNIS=nis;
+  const list=cacheTx.filter(t=>t.nis===nis); const t=totals(list);
+  $("cek-saldo").textContent=rp(t.in-t.out); $("cek-masuk").textContent=rp(t.in); $("cek-keluar").textContent=rp(t.out);
+  $("cek-ident").textContent="NIS "+nis+" • "+s.nama;
+  $("cek-riwayat").innerHTML=[...list].reverse().slice(0,30).map(x=>`<div class="border rounded-xl p-3 text-sm flex gap-2"><div><b>${esc(x.jenis)}</b> • ${tglID(x.tanggal)}<div class="text-xs text-slate-500">${esc(x.keterangan||"-")}</div></div><b class="ml-auto">${x.jenis==="Setoran"?"+":"−"} ${rp(x.nominal)}</b></div>`).join("")||"Belum ada transaksi.";
+  $("cek-status").textContent=""; $("cek-hasil").classList.remove("hidden");
+};
+$("btn-preview-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); };
+$("btn-print-buku").onclick=()=>{ if(!cekNIS) return alert("Cek saldo dulu."); preview(docBuku(cekNIS)); setTimeout(doPrint,300); };
+
+/* Petugas login */
+$("btn-login").onclick=async()=>{
+  const a=await getAdmin();
+  if($("login-user").value.trim()===a.u && await sha256($("login-pass").value)===a.h){ sessionStorage.setItem("bm2_sess","1"); $("login-status").textContent=""; refreshAuth(); }
+  else $("login-status").textContent="Username / password salah.";
+};
+$("btn-logout").onclick=()=>{ sessionStorage.removeItem("bm2_sess"); refreshAuth(); };
+$("btn-ganti").onclick=async()=>{
+  const u=$("set-user").value.trim(), p=$("set-pass").value;
+  if(u.length<3||p.length<4) return alert("Username min 3, password min 4 karakter.");
+  LS.set("bm2_admin",{u,h:await sha256(p)}); alert("Login petugas diperbarui."); $("set-pass").value="";
+};
+
+/* Simpan transaksi */
+$("tx-form").onsubmit=async e=>{
+  e.preventDefault();
+  if(!isLogin()) return alert("Login petugas dulu.");
+  const nis=$("f-nis").value.trim().toUpperCase(), nama=$("f-nama").value.trim().toUpperCase();
+  const jenis=$("f-jenis").value, nominal=Number(String($("f-nominal").value).replace(/\D/g,""));
+  const tanggal=$("f-tanggal").value, ket=$("f-ket").value.trim().toUpperCase()||"-", pin=$("f-pin").value.trim();
+  if(!nis||!nama||!nominal||nominal<=0||!tanggal){ $("tx-status").textContent="Lengkapi NIS, nama, nominal, tanggal."; return; }
+  const known=cacheStudents[nis];
+  if(known && known.nama!==nama){ $("tx-status").textContent="Nama tidak cocok dengan NIS tersimpan ("+known.nama+")."; return; }
+  if(!known){ if(!/^\d{4,6}$/.test(pin)){ $("tx-status").textContent="NIS baru: wajib isi PIN 4–6 digit untuk nasabah."; return; }
+    await Store.upsertStudent(nis,nama,await sha256(pin));
+  }
+  if(jenis==="Penarikan" && nominal>saldoNIS(nis)){ $("tx-status").textContent="Saldo tidak cukup. Sisa "+rp(saldoNIS(nis)); return; }
+  await Store.addTx({nis,nama,jenis,nominal,tanggal,keterangan:ket,createdBy:"petugas"});
+  $("tx-status").textContent="Tersimpan ✔ (PIN nasabah "+(known?"tetap":"baru: "+pin)+")";
+  e.target.reset(); $("f-tanggal").value=todayISO(); $("f-jenis").value="Setoran"; await refresh();
+};
+$("btn-reset-pin").onclick=async()=>{
+  if(!isLogin()) return alert("Login dulu.");
+  const nis=$("f-nis").value.trim().toUpperCase(); if(!nis||!cacheStudents[nis]) return alert("NIS tidak dikenal.");
+  const p=prompt("PIN baru 4–6 digit untuk NIS "+nis+":"); if(!p||!/^\d{4,6}$/.test(p)) return alert("PIN tidak valid.");
+  await Store.upsertStudent(nis,cacheStudents[nis].nama,await sha256(p)); await refresh(); alert("PIN direset. PIN baru: "+p+" (catat & berikan ke nasabah).");
+};
+$("cari").oninput=renderTxList;
+
+/* Laporan */
+function renderLap(){
+  const t=$("lap-tanggal").value||todayISO(); const list=cacheTx.filter(x=>x.tanggal===t); const s=totals(list);
+  $("lap-ringkas").innerHTML=`<div class="rounded-xl bg-emerald-50 p-3 text-sm">Setoran<b class="block">${rp(s.in)}</b></div><div class="rounded-xl bg-orange-50 p-3 text-sm">Penarikan<b class="block">${rp(s.out)}</b></div><div class="rounded-xl bg-slate-50 p-3 text-sm">Selisih<b class="block">${rp(s.in-s.out)}</b> (${list.length} trx)</div>`;
+  $("lap-body").innerHTML=list.map(x=>`<tr class="border-b"><td class="p-2">${tglID(x.tanggal)}</td><td class="p-2">${esc(x.nis)}</td><td class="p-2">${esc(x.nama)}</td><td class="p-2">${esc(x.jenis)}</td><td class="p-2">${esc(x.keterangan||"-")}</td><td class="p-2 text-right font-bold">${rp(x.nominal)}</td></tr>`).join("")||`<tr><td colspan="6" class="p-4 text-center text-slate-500">Tidak ada transaksi.</td></tr>`;
+}
+$("btn-lap").onclick=()=>{ if(!isLogin()) return alert("Laporan khusus petugas — login dulu."); renderLap(); };
+$("btn-preview-harian").onclick=()=>{ if(!isLogin()) return alert("Login dulu."); preview(docHarian($("lap-tanggal").value||todayISO())); };
+$("btn-print-harian").onclick=()=>{ if(!isLogin()) return alert("Login dulu."); preview(docHarian($("lap-tanggal").value||todayISO())); setTimeout(doPrint,300); };
+$("btn-csv").onclick=()=>{
+  if(!isLogin()) return alert("Login dulu.");
+  const t=$("lap-tanggal").value||todayISO(); const list=cacheTx.filter(x=>x.tanggal===t);
+  const csv="tanggal,nis,nama,jenis,keterangan,nominal\n"+list.map(x=>[x.tanggal,x.nis,'"'+x.nama+'"','"'+x.jenis+'"','"'+(x.keterangan||"")+'"',x.nominal].join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="harian-"+t+".csv"; a.click();
+};
+
+/* Init */
+$("f-tanggal").value=todayISO(); $("lap-tanggal").value=todayISO();
+$("f-nis").addEventListener("input",e=>{ e.target.value=e.target.value.toUpperCase().replace(/\s/g,""); const k=cacheStudents[e.target.value]; if(k){ $("f-nama").value=k.nama; $("f-nama").readOnly=true; } else $("f-nama").readOnly=false; });
+refreshAuth(); refresh().then(renderLap);
+lucide.createIcons();
+</script>
+</body>
+</html>
