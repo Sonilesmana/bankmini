@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Back Office — Super Admin | Bank Mini SMK YP.79</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17342f;--leaf:#247a61;--leaf-d:#174c3e;--line:#dce8df;--muted:#647d75;--bg:#f1f6f3}
+*{box-sizing:border-box}
+body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:radial-gradient(1100px 380px at 50% -90px,#dff0e6 0%,rgba(223,240,230,0) 60%),var(--bg)}
+.heading-font{font-family:"Fraunces",serif}
+.bank-card{border:1px solid var(--line);box-shadow:0 14px 35px rgba(25,68,54,.08);background:#fff;border-radius:1.25rem}
+.brand-logo{display:flex;height:2.75rem;width:2.75rem;align-items:center;justify-content:center;border-radius:1rem;background:linear-gradient(135deg,#174c3e,#31a075);color:#fff;box-shadow:0 6px 14px rgba(23,76,62,.3);flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;background:#fff;border:1px solid var(--line);padding:.32rem .7rem;font-weight:700;font-size:.72rem;color:#2c4b43}
+.pill-live{background:#e9f7ef;border-color:#bfe6cd;color:#166534}
+.pill .dot{height:.5rem;width:.5rem;border-radius:999px;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+.sec{display:flex;align-items:center;gap:.6rem}
+.sec-ic{display:flex;height:2.25rem;width:2.25rem;align-items:center;justify-content:center;border-radius:.8rem;background:#e7f4ec;color:#166534;flex-shrink:0}
+.form-field{width:100%;border:1px solid #cdded3;border-radius:.8rem;padding:.75rem .85rem;outline:none;background:#fffefb;color:var(--ink)}
+.form-field:focus{border-color:#247a61;box-shadow:0 0 0 3px rgba(36,122,97,.15)}
+.tab-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1rem;border-radius:.8rem;font-weight:700;font-size:.85rem;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none}
+a.tab-btn:hover{background:#eef7f1}
+.tab-btn.active{background:var(--leaf-d);color:#fff;border-color:var(--leaf-d)}
+span.tab-btn.active{cursor:default}
+.nice-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.nice-table th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:.55rem;border-bottom:2px solid var(--line);white-space:nowrap}
+.nice-table td{padding:.6rem .55rem;border-bottom:1px solid #e8f0ea;vertical-align:top}
+.nice-table tbody tr:hover{background:#f4faf6}
+button{cursor:pointer}
+.doc{font-family:"DM Sans",sans-serif;color:#111}
+.doc table{width:100%;border-collapse:collapse;font-size:12px}
+.doc th,.doc td{border:1px solid #333;padding:6px 8px;text-align:left;vertical-align:top}
+.doc th{background:#f0f0f0}
+.doc .num{text-align:right;white-space:nowrap}
+#print-modal{display:none}
+#print-modal.open{display:flex}
+#print-area{display:none}
+@media print{
+  body{background:#fff !important}
+  body *{visibility:hidden !important}
+  #print-area,#print-area *{visibility:visible !important}
+  #print-area{display:block !important;position:absolute !important;left:0;top:0;width:100% !important;padding:16px !important;background:#fff !important}
+  #print-modal{position:static !important;display:block !important}
+  #print-modal .no-print{display:none !important}
+  .no-print{display:none !important}
+}
+</style>
+</head>
+<body>
+<div class="max-w-7xl mx-auto px-4 py-6 no-print">
+<header class="bank-card overflow-hidden mb-6">
+<div class="grid md:grid-cols-2">
+<div class="p-6 sm:p-8">
+<div class="flex items-center gap-3 mb-4"><div class="brand-logo"><i data-lucide="landmark" class="h-5 w-5"></i></div>
+<div><div class="text-sm font-extrabold tracking-wide text-emerald-900">SMK YP.79 MAJALAYA</div><div class="text-xs font-semibold tracking-widest text-emerald-700">BANK MINI • BACK OFFICE</div></div></div>
+<h1 class="heading-font text-3xl sm:text-4xl font-bold leading-tight">Super Admin — All Access</h1>
+<p class="mt-3 text-sm leading-relaxed text-slate-600">Awasi, koreksi, dan hapus data. Laporan harian, mingguan, bulanan + cetak.</p>
+<div class="mt-4 flex flex-wrap gap-2 text-xs"><span class="pill pill-live"><span class="dot"></span>MODE: Publik (online)</span><span class="pill">🗂️ Role: Back Office</span></div>
+</div>
+<div class="p-6 sm:p-8 bg-gradient-to-br from-emerald-900 via-emerald-700 to-emerald-500 text-white">
+<p class="text-sm font-semibold text-emerald-100">TOTAL DANA NASABAH</p>
+<p id="bo-balance" class="heading-font text-4xl font-bold mt-1">Rp0</p>
+<div class="grid grid-cols-2 gap-3 mt-4 text-sm">
+<div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Setor</p><p id="bo-in" class="font-bold">Rp0</p></div>
+<div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Tarik</p><p id="bo-out" class="font-bold">Rp0</p></div>
+</div>
+<p class="mt-3 text-xs text-emerald-100"><span id="bo-count-s">0</span> nasabah • <span id="bo-count-t">0</span> transaksi</p>
+</div>
+</div>
+<nav class="flex flex-wrap gap-2 p-4 border-t border-emerald-900/10 bg-emerald-50/50">
+<a href="index.html" class="tab-btn">👤 Nasabah</a><a href="cs.html" class="tab-btn">📝 CS</a><a href="teller.html" class="tab-btn">💰 Teller</a><span class="tab-btn active">🗂️ Back Office</span>
+<span class="ml-auto text-xs self-center text-slate-500" id="auth-state">BO: belum login</span>
+</nav>
+</header>
+<section class="bank-card p-5 sm:p-7">
+<div id="login-box">
+<div class="sec"><span class="sec-ic"><i data-lucide="lock" class="h-5 w-5"></i></span><h2 class="heading-font text-xl font-bold">Login Back Office</h2></div>
+<div class="grid md:grid-cols-3 gap-3 mt-4">
+<input id="login-user" class="form-field" placeholder="Username" autocomplete="username">
+<input id="login-pass" class="form-field" type="password" placeholder="Password" autocomplete="current-password">
+<button id="btn-login" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Masuk</button>
+</div><p id="login-status" class="text-sm mt-2 font-medium text-red-700"></p>
+</div>
+<div id="bo-box" class="hidden">
+<div class="flex flex-wrap items-center gap-2">
+<div class="sec"><span class="sec-ic"><i data-lucide="shield-check" class="h-5 w-5"></i></span><h2 class="heading-font text-xl font-bold">Kelola Data</h2></div>
+<button id="btn-logout" class="ml-auto rounded-xl border px-4 py-2 text-sm font-bold">Keluar</button>
+</div>
+<div class="mt-5 border-t pt-4">
+<div class="flex flex-wrap gap-2 items-center"><div class="sec"><span class="sec-ic"><i data-lucide="users" class="h-5 w-5"></i></span><h3 class="font-bold">Data Nasabah</h3></div>
+<input id="cari-s" class="form-field !w-auto ml-auto" placeholder="Cari..." style="max-width:220px"></div>
+<div class="overflow-x-auto mt-3"><table class="nice-table"><thead><tr><th>NIS</th><th>Nama</th><th>Jurusan</th><th>HP</th><th>Saldo</th><th>Aksi</th></tr></thead><tbody id="nsb-body"></tbody></table></div>
+<div id="edit-s" class="hidden mt-3 rounded-xl border p-3 grid md:grid-cols-3 gap-2">
+<input id="es-nama" class="form-field uppercase" placeholder="Nama"><input id="es-jurusan" class="form-field" placeholder="Jurusan"><input id="es-hp" class="form-field" placeholder="No HP">
+<input id="es-alamat" class="form-field md:col-span-2" placeholder="Alamat"><div class="flex gap-2"><button id="es-save" class="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white flex-1">Simpan</button><button id="es-cancel" class="rounded-xl border px-4 py-2 text-sm font-bold">Batal</button></div>
+</div>
+</div>
+<div class="mt-5 border-t pt-4">
+<div class="flex flex-wrap gap-2 items-center"><div class="sec"><span class="sec-ic"><i data-lucide="receipt-text" class="h-5 w-5"></i></span><h3 class="font-bold">Data Transaksi</h3></div>
+<input id="cari-t" class="form-field !w-auto ml-auto" placeholder="Cari NIS/nama..." style="max-width:220px"></div>
+<div class="overflow-x-auto mt-3"><table class="nice-table"><thead><tr><th>Tanggal</th><th>NIS</th><th>Nama</th><th>Jenis</th><th class="text-right">Nominal</th><th>Aksi</th></tr></thead><tbody id="trx-body"></tbody></table></div>
+<div id="edit-t" class="hidden mt-3 rounded-xl border p-3 grid md:grid-cols-4 gap-2">
+<select id="et-jenis" class="form-field"><option>Setor</option><option>Tarik</option></select><input id="et-nominal" class="form-field" inputmode="numeric"><input id="et-tanggal" class="form-field" type="date"><input id="et-ket" class="form-field uppercase" placeholder="Keterangan">
+<div class="md:col-span-4 flex gap-2"><button id="et-save" class="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white flex-1">Simpan Perubahan</button><button id="et-cancel" class="rounded-xl border px-4 py-2 text-sm font-bold">Batal</button></div>
+</div>
+</div>
+<div class="mt-5 border-t pt-4">
+<div class="sec"><span class="sec-ic"><i data-lucide="printer" class="h-5 w-5"></i></span><h3 class="font-bold">Laporan Berkala</h3></div>
+<div class="flex flex-wrap gap-2 mt-3 items-end">
+<select id="lap-mode" class="form-field !w-auto"><option value="harian">Harian</option><option value="mingguan">Mingguan</option><option value="bulanan">Bulanan</option></select>
+<input id="lap-tanggal" class="form-field !w-auto" type="date">
+<input id="lap-bulan" class="form-field !w-auto hidden" type="month">
+<button id="btn-lap" class="rounded-xl bg-emerald-800 px-4 py-3 text-sm font-bold text-white">Tampilkan</button>
+<button id="btn-lap-print" class="rounded-xl border px-4 py-3 text-sm font-bold">👁️ Preview &amp; Print</button>
+</div>
+<div id="lap-ringkas" class="grid sm:grid-cols-4 gap-3 mt-4"></div>
+<div class="overflow-x-auto mt-3"><table class="nice-table"><thead><tr><th>Tanggal</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th class="text-right">Nominal</th></tr></thead><tbody id="lap-body"></tbody></table></div>
+</div>
+<div class="mt-5 border-t pt-4 grid md:grid-cols-2 gap-6">
+<div>
+<div class="sec"><span class="sec-ic"><i data-lucide="settings" class="h-5 w-5"></i></span><h3 class="font-bold">Pengaturan Nota</h3></div>
+<div class="grid gap-2 mt-2">
+<input id="p-sekolah" class="form-field" placeholder="Nama sekolah"><input id="p-alamat" class="form-field" placeholder="Alamat"><input id="p-telp" class="form-field" placeholder="No. telepon"><input id="p-petugas" class="form-field uppercase" placeholder="Nama petugas (TTD)">
+<button id="btn-profile" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white">💾 Simpan</button>
+</div>
+</div>
+<div>
+<div class="sec"><span class="sec-ic"><i data-lucide="key-round" class="h-5 w-5"></i></span><h3 class="font-bold">Kelola Akun Peran</h3></div>
+<div class="grid gap-2 mt-2">
+<div class="flex gap-2"><select id="acc-role" class="form-field !w-auto"><option value="cs">CS</option><option value="teller">Teller</option><option value="bo">Back Office</option></select><input id="acc-user" class="form-field" placeholder="Username baru"></div>
+<input id="acc-pass" class="form-field" type="password" placeholder="Password baru (min 4)">
+<button id="btn-acc" class="rounded-xl border px-4 py-2.5 text-sm font-bold">Ubah Akun</button>
+<p class="text-xs text-slate-500">Default: CS cs/cs12345 • Teller teller/teller12345 • BO admin/83mJENda</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<footer class="text-center text-xs text-slate-500 py-6">Bank Mini SMK YP.79 Majalaya • Back Office • Publik (online)</footer>
+</div>
+<div id="print-modal" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4 no-print">
+<div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+<div class="flex items-center gap-2 p-4 border-b no-print"><b>👁️ Preview Laporan</b><span class="ml-auto flex gap-2">
+<button id="btn-modal-print" class="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white">🖨️ Print</button>
+<button id="btn-modal-close" class="rounded-xl border px-4 py-2 text-sm font-bold">Tutup</button></span></div>
+<div class="overflow-auto p-4 bg-slate-100"><div id="print-preview" class="doc bg-white p-6 shadow"></div></div>
+</div>
+</div>
+<div id="print-area" class="doc"></div>
+<script>
+const firebaseConfig = { apiKey:"GANTI_API_KEY", authDomain:"GANTI.firebaseapp.com", projectId:"GANTI", appId:"GANTI" };
+const SHEETS_API = "";
+const USE_FIREBASE = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("GANTI");
+const USE_SHEETS = SHEETS_API.startsWith("https://");
+let db = null;
+if (USE_FIREBASE && window.firebase) { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
+const $ = id => document.getElementById(id);
+const rp = n => "Rp" + (Number(n)||0).toLocaleString("id-ID") + ",00";
+const todayISO = () => { const d=new Date(); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const tglID = v => { if(!v) return "-"; try{ return new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(v+"T00:00:00")); }catch(e){ return v; } };
+async function sha256(s){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const LS = { get:(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } }, set:(k,v)=>localStorage.setItem(k, JSON.stringify(v)) };
+const isSetor = j => j==="Setor"||j==="Setoran";
+const Store = {
+  async students(){
+    if(db){ const s=await db.collection("students").get(); const o={}; s.forEach(d=>o[d.id]=d.data()); return o; }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=students")).json(); const o={}; r.forEach(x=>o[String(x.nis)]={nama:x.nama,pinHash:x.pinHash,jurusan:x.jurusan||"",alamat:x.alamat||"",noHp:x.noHp||"",tanggalJam:x.tanggalJam||""}); return o; }
+    return LS.get("bm2_students",{});
+  },
+  async transactions(){
+    if(db){ const s=await db.collection("transactions").orderBy("tanggal","asc").get(); return s.docs.map(d=>({id:d.id,...d.data()})); }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=transactions")).json(); return r.map(x=>({id:String(x.id),nis:String(x.nis),nama:x.nama,jenis:x.jenis,nominal:Number(x.nominal),tanggal:x.tanggal,tanggalJam:x.tanggalJam||"",keterangan:x.keterangan})); }
+    return LS.get("bm2_tx",[]);
+  },
+  async upsertStudent(nis,obj){
+    if(db){ await db.collection("students").doc(nis).set(Object.assign({updatedAt:new Date().toISOString()},obj),{merge:true}); return; }
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify(Object.assign({action:"upsertStudent",nis},obj))}); return; }
+    const s=LS.get("bm2_students",{}); s[nis]=Object.assign(s[nis]||{},obj); LS.set("bm2_students",s);
+  },
+  async delStudent(nis){
+    if(db){ await db.collection("students").doc(nis).delete(); return; }
+    if(USE_SHEETS){ return alert("Hapus nasabah di mode Sheets: hapus baris di spreadsheet."); }
+    const s=LS.get("bm2_students",{}); delete s[nis]; LS.set("bm2_students",s);
+  },
+  async updateTx(id,obj){
+    if(db){ await db.collection("transactions").doc(id).update(obj); return; }
+    if(USE_SHEETS){ return alert("Edit transaksi di mode Sheets langsung di spreadsheet."); }
+    const a=LS.get("bm2_tx",[]); const i=a.findIndex(t=>t.id===id); if(i>=0){ a[i]=Object.assign(a[i],obj); LS.set("bm2_tx",a); }
+  },
+  async delTx(id){
+    if(db){ await db.collection("transactions").doc(id).delete(); return; }
+    if(USE_SHEETS){ return alert("Hapus transaksi di mode Sheets langsung di spreadsheet."); }
+    LS.set("bm2_tx", LS.get("bm2_tx",[]).filter(t=>t.id!==id));
+  }
+};
+async function seedIfEmpty(){
+  const s=await Store.students(); if(Object.keys(s).length) return false;
+  try{
+    const t=await (await fetch("seed-nasabah.csv")).text();
+    for(const ln of t.split(/\r?\n/).slice(1)){
+      const m=ln.match(/^\s*([^,]+),"?(.*?)"?,\s*(\d{4,6})\s*$/); if(!m) continue;
+      await Store.upsertStudent(m[1].trim().toUpperCase(),{nama:m[2].trim().toUpperCase(),pinHash:await sha256(m[3])});
+    } return true;
+  }catch(e){ return false; }
+}
+function getUser(){ const a=LS.get("bm_bo",null); if(a && a.h!=="472c6266c924851d80dfc3183540b8b5ea3f899ee29149d10cdd901f3105efc9") return a; const d={u:"admin",h:"e6c63d929943091c6066cb13e98bdb1744e02e2a9dbcefb205dfcb8a421bb72a"}; LS.set("bm_bo",d); return d; }
+const isLogin = () => sessionStorage.getItem("bm_bo_sess")==="1";
+let cacheS={}, cacheT=[];
+function saldoNIS(nis){ return cacheT.filter(t=>t.nis===nis).reduce((s,t)=>s+(isSetor(t.jenis)?+t.nominal:-t.nominal),0); }
+async function refresh(){
+  cacheS=await Store.students(); cacheT=await Store.transactions();
+  const tt=cacheT.reduce((a,t)=>{ if(isSetor(t.jenis))a.in+=+t.nominal; else a.out+=+t.nominal; return a; },{in:0,out:0});
+  $("bo-balance").textContent=rp(tt.in-tt.out); $("bo-in").textContent=rp(tt.in); $("bo-out").textContent=rp(tt.out);
+  $("bo-count-s").textContent=Object.keys(cacheS).length; $("bo-count-t").textContent=cacheT.length;
+  renderStudents(); renderTrx(); renderLap();
+}
+function renderStudents(){
+  const q=($("cari-s").value||"").toUpperCase();
+  $("nsb-body").innerHTML=Object.keys(cacheS).sort().filter(k=>!q||k.includes(q)||(cacheS[k].nama||"").includes(q)).map(k=>{
+    const v=cacheS[k];
+    return `<tr><td><b>${esc(k)}</b></td><td>${esc(v.nama||"-")}<div class="text-xs text-slate-500">${esc(v.jurusan||"")} • ${esc(v.noHp||"")}</div></td><td>${esc(v.jurusan||"-")}</td><td>${esc(v.noHp||"-")}</td><td class="font-bold">${rp(saldoNIS(k))}</td>
+    <td class="whitespace-nowrap"><button class="text-xs font-bold border rounded-lg px-2 py-1" data-es="${k}">Edit</button> <button class="text-xs font-bold border rounded-lg px-2 py-1" data-ps="${k}">PIN</button> <button class="text-xs font-bold border rounded-lg px-2 py-1 text-red-600" data-ds="${k}">Hapus</button></td></tr>`;
+  }).join("")||`<tr><td colspan="6" class="p-4 text-center text-slate-500">Kosong.</td></tr>`;
+  $("nsb-body").querySelectorAll("[data-es]").forEach(b=>b.onclick=()=>{ editSNis=b.dataset.es; const v=cacheS[editSNis]; $("es-nama").value=v.nama||""; $("es-jurusan").value=v.jurusan||""; $("es-hp").value=v.noHp||""; $("es-alamat").value=v.alamat||""; $("edit-s").classList.remove("hidden"); });
+  $("nsb-body").querySelectorAll("[data-ps]").forEach(b=>b.onclick=async()=>{ const p=prompt("PIN baru 4–6 digit untuk "+b.dataset.ps+":"); if(!p||!/^\d{4,6}$/.test(p)) return alert("PIN tidak valid."); await Store.upsertStudent(b.dataset.ps,{pinHash:await sha256(p)}); alert("PIN diperbarui: "+p); });
+  $("nsb-body").querySelectorAll("[data-ds]").forEach(b=>b.onclick=async()=>{ if(cacheT.some(t=>t.nis===b.dataset.ds)) return alert("Masih ada transaksi — hapus transaksinya dulu."); if(!confirm("Hapus nasabah "+b.dataset.ds+"?")) return; await Store.delStudent(b.dataset.ds); await refresh(); });
+}
+let editSNis=null, editTId=null;
+$("es-save").onclick=async()=>{ if(!editSNis) return; await Store.upsertStudent(editSNis,{nama:$("es-nama").value.trim().toUpperCase(),jurusan:$("es-jurusan").value.trim().toUpperCase(),noHp:$("es-hp").value.trim(),alamat:$("es-alamat").value.trim()}); $("edit-s").classList.add("hidden"); await refresh(); };
+$("es-cancel").onclick=()=>$("edit-s").classList.add("hidden");
+function renderTrx(){
+  const q=($("cari-t").value||"").toUpperCase();
+  $("trx-body").innerHTML=[...cacheT].reverse().filter(t=>!q||t.nis.includes(q)||(t.nama||"").toUpperCase().includes(q)).slice(0,100).map(t=>`<tr><td>${tglID(t.tanggal)}</td><td>${esc(t.nis)}</td><td>${esc(t.nama)}</td><td>${esc(t.jenis)}</td><td class="text-right font-bold">${rp(t.nominal)}</td>
+  <td class="whitespace-nowrap"><button class="text-xs font-bold border rounded-lg px-2 py-1" data-et="${t.id}">Edit</button> <button class="text-xs font-bold border rounded-lg px-2 py-1 text-red-600" data-dt="${t.id}">Hapus</button></td></tr>`).join("")||`<tr><td colspan="6" class="p-4 text-center text-slate-500">Kosong.</td></tr>`;
+  $("trx-body").querySelectorAll("[data-et]").forEach(b=>b.onclick=()=>{ const t=cacheT.find(x=>x.id===b.dataset.et); if(!t) return; editTId=t.id; $("et-jenis").value=isSetor(t.jenis)?"Setor":"Tarik"; $("et-nominal").value=t.nominal; $("et-tanggal").value=t.tanggal; $("et-ket").value=t.keterangan||""; $("edit-t").classList.remove("hidden"); });
+  $("trx-body").querySelectorAll("[data-dt]").forEach(b=>b.onclick=async()=>{ if(!confirm("Hapus transaksi ini?")) return; await Store.delTx(b.dataset.dt); await refresh(); });
+}
+$("et-save").onclick=async()=>{ if(!editTId) return; const v=Number(String($("et-nominal").value).replace(/\D/g,"")); if(!v) return alert("Nominal tidak valid."); await Store.updateTx(editTId,{jenis:$("et-jenis").value,nominal:v,tanggal:$("et-tanggal").value,keterangan:$("et-ket").value.trim().toUpperCase()||"-"}); $("edit-t").classList.add("hidden"); await refresh(); };
+$("et-cancel").onclick=()=>$("edit-t").classList.add("hidden");
+function lapRange(){
+  const mode=$("lap-mode").value;
+  if(mode==="bulanan"){ const m=$("lap-bulan").value||todayISO().slice(0,7); return {list:cacheT.filter(t=>(t.tanggal||"").startsWith(m)),label:"Bulan "+m}; }
+  const d=$("lap-tanggal").value||todayISO();
+  if(mode==="harian") return {list:cacheT.filter(t=>t.tanggal===d),label:"Tanggal "+tglID(d)};
+  const dt=new Date(d+"T00:00:00"), day=(dt.getDay()+6)%7, mon=new Date(dt); mon.setDate(dt.getDate()-day);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const f=x=>x.toISOString().slice(0,10), a=f(mon), b=f(sun);
+  return {list:cacheT.filter(t=>t.tanggal>=a&&t.tanggal<=b),label:"Minggu "+tglID(a)+" s/d "+tglID(b)};
+}
+function renderLap(){
+  if(!isLogin()) return;
+  const {list,label}=lapRange();
+  const s=list.reduce((a,t)=>{ if(isSetor(t.jenis))a.in+=+t.nominal; else a.out+=+t.nominal; return a; },{in:0,out:0});
+  $("lap-ringkas").innerHTML=`<div class="rounded-xl bg-emerald-50 p-3 text-sm">Setor<b class="block">${rp(s.in)}</b></div><div class="rounded-xl bg-orange-50 p-3 text-sm">Tarik<b class="block">${rp(s.out)}</b></div><div class="rounded-xl bg-slate-50 p-3 text-sm">Selisih<b class="block">${rp(s.in-s.out)}</b></div><div class="rounded-xl bg-slate-50 p-3 text-sm">Transaksi<b class="block">${list.length}</b></div>`;
+  $("lap-body").innerHTML=[...list].sort((a,b)=>String(a.tanggal).localeCompare(String(b.tanggal))).map(x=>`<tr><td>${tglID(x.tanggal)}</td><td>${esc(x.nis)}</td><td>${esc(x.nama)}</td><td>${esc(x.jenis)}</td><td>${esc(x.keterangan||"-")}</td><td class="text-right font-bold">${rp(x.nominal)}</td></tr>`).join("")||`<tr><td colspan="6" class="p-4 text-center text-slate-500">Tidak ada transaksi.</td></tr>`;
+  lapCache={list,label,s};
+}
+let lapCache={list:[],label:"",s:{in:0,out:0}};
+$("lap-mode").onchange=()=>{ const m=$("lap-mode").value==="bulanan"; $("lap-bulan").classList.toggle("hidden",!m); $("lap-tanggal").classList.toggle("hidden",m); };
+$("btn-lap").onclick=()=>{ if(!isLogin()) return alert("Login dulu."); renderLap(); };
+const DEF_PROFILE={sekolah:"BANK MINI • SMK YP.79 MAJALAYA",alamat:"Jl. Pendidikan Majalaya",telp:"",petugas:""};
+function getProfile(){ try{ return Object.assign({},DEF_PROFILE,LS.get("bm2_profile",{})); }catch(e){ return Object.assign({},DEF_PROFILE); } }
+function loadProfile(){ const p=getProfile(); if(!$("p-sekolah"))return; $("p-sekolah").value=p.sekolah; $("p-alamat").value=p.alamat; $("p-telp").value=p.telp; $("p-petugas").value=p.petugas; }
+$("btn-profile").onclick=()=>{ LS.set("bm2_profile",{sekolah:$("p-sekolah").value.trim()||DEF_PROFILE.sekolah,alamat:$("p-alamat").value.trim(),telp:$("p-telp").value.trim(),petugas:$("p-petugas").value.trim().toUpperCase()}); alert("Pengaturan nota tersimpan."); };
+function preview(html){ $("print-preview").innerHTML=html; $("print-area").innerHTML=html; $("print-modal").classList.add("open"); }
+$("btn-modal-close").onclick=()=>$("print-modal").classList.remove("open");
+$("btn-modal-print").onclick=()=>window.print();
+$("btn-lap-print").onclick=()=>{
+  if(!isLogin()) return alert("Login dulu.");
+  const p=getProfile(), {list,label,s}=lapCache;
+  const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nis)}</td><td>${esc(x.nama)}</td><td>${esc(x.jenis)}</td><td>${esc(x.keterangan||"-")}</td><td style="text-align:right;white-space:nowrap">${rp(x.nominal)}</td></tr>`).join("");
+  preview(`<div style="text-align:center"><div style="font-size:18px;font-weight:800">${esc(p.sekolah)}</div><div style="font-size:11px;color:#333">${esc(p.alamat)}${p.telp?" • Telp. "+esc(p.telp):""}</div></div><div style="border-top:3px double #000;margin:8px 0 14px"></div>`
+  +`<div style="text-align:center;margin-bottom:10px"><div style="font-size:14px;font-weight:800;letter-spacing:1px;text-decoration:underline">LAPORAN ${esc($("lap-mode").value.toUpperCase())}</div><div style="font-size:11px;margin-top:3px">${esc(label)} • ${list.length} transaksi</div></div>`
+  +`<div style="font-size:12px;margin-bottom:8px">Total Setor: <b>${rp(s.in)}</b> • Total Tarik: <b>${rp(s.out)}</b> • Selisih: <b>${rp(s.in-s.out)}</b></div>`
+  +`<table><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th>Nominal (Rp)</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Tidak ada transaksi</td></tr>'}</tbody></table>`
+  +`<div style="display:flex;justify-content:space-between;margin-top:26px;font-size:12px"><div style="text-align:center;flex:1">Majalaya, ${tglID(todayISO())}<br>Petugas Bank Mini<br><br><br><br><b><u>${p.petugas?esc(p.petugas):"( ............................ )"}</u></b></div><div style="text-align:center;flex:1"><br>Mengetahui<br>Kepala Sekolah<br><br><br><br><b><u>( ............................ )</u></b></div></div>`);
+};
+$("btn-acc").onclick=async()=>{
+  const r=$("acc-role").value, u=$("acc-user").value.trim(), pw=$("acc-pass").value;
+  if(u.length<3||pw.length<4) return alert("Username min 3, password min 4.");
+  LS.set(r==="cs"?"bm_cs":r==="teller"?"bm_teller":"bm_bo",{u,h:await sha256(pw)});
+  $("acc-pass").value=""; alert("Akun "+r+" diperbarui: "+u);
+};
+$("btn-login").onclick=async()=>{
+  const a=getUser();
+  if($("login-user").value.trim()===a.u && await sha256($("login-pass").value)===a.h){ sessionStorage.setItem("bm_bo_sess","1"); $("login-status").textContent=""; syncAuth(); await refresh(); }
+  else $("login-status").textContent="Username / password salah.";
+};
+$("btn-logout").onclick=()=>{ sessionStorage.removeItem("bm_bo_sess"); syncAuth(); };
+function syncAuth(){ const on=isLogin(); $("login-box").classList.toggle("hidden",on); $("bo-box").classList.toggle("hidden",!on); $("auth-state").textContent="BO: "+(on?"LOGIN ✔":"belum login"); }
+$("cari-s").oninput=renderStudents; $("cari-t").oninput=renderTrx;
+$("lap-tanggal").value=todayISO();
+loadProfile(); syncAuth(); (async()=>{ await seedIfEmpty(); await refresh(); })();
+lucide.createIcons();
+</script>
+</body>
+</html>
