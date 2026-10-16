@@ -260,7 +260,7 @@ function saldoNIS(nis){ return cacheTx.filter(t=>t.nis===nis).reduce((s,t)=>s+(t
 function totals(list){ return list.reduce((a,t)=>{ if(t.jenis==="Setoran")a.in+=+t.nominal; else a.out+=+t.nominal; return a; },{in:0,out:0}); }
 
 /* ================= AUTH PETUGAS (1 operator) ================= */
-async function getAdmin(){ const a=LS.get("bm2_admin",null); if(a) return a; const d={u:"admin",h:"e6c63d929943091c6066cb13e98bdb1744e02e2a9dbcefb205dfcb8a421bb72a"}; LS.set("bm2_admin",d); return d; }
+async function getAdmin(){ const NH="e6c63d929943091c6066cb13e98bdb1744e02e2a9dbcefb205dfcb8a421bb72a", OH="472c6266c924851d80dfc3183540b8b5ea3f899ee29149d10cdd901f3105efc9"; const a=LS.get("bm2_admin",null); if(a && a.h!==OH) return a; const d={u:"admin",h:NH}; LS.set("bm2_admin",d); return d; }
 const isLogin = () => sessionStorage.getItem("bm2_sess")==="1";
 async function refreshAuth(){ const on=isLogin(); $("login-box").classList.toggle("hidden",on); $("petugas-box").classList.toggle("hidden",!on); $("auth-state").textContent="Petugas: "+(on?"LOGIN ✔":"belum login"); }
 
