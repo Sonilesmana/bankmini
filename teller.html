@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teller — Transaksi Tunai | Bank Mini SMK YP.79</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17342f;--leaf:#247a61;--leaf-d:#174c3e;--line:#dce8df;--muted:#647d75;--bg:#f1f6f3}
+*{box-sizing:border-box}
+body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:radial-gradient(1100px 380px at 50% -90px,#dff0e6 0%,rgba(223,240,230,0) 60%),var(--bg)}
+.heading-font{font-family:"Fraunces",serif}
+.bank-card{border:1px solid var(--line);box-shadow:0 14px 35px rgba(25,68,54,.08);background:#fff;border-radius:1.25rem}
+.brand-logo{display:flex;height:2.75rem;width:2.75rem;align-items:center;justify-content:center;border-radius:1rem;background:linear-gradient(135deg,#174c3e,#31a075);color:#fff;box-shadow:0 6px 14px rgba(23,76,62,.3);flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;background:#fff;border:1px solid var(--line);padding:.32rem .7rem;font-weight:700;font-size:.72rem;color:#2c4b43}
+.pill-live{background:#e9f7ef;border-color:#bfe6cd;color:#166534}
+.pill .dot{height:.5rem;width:.5rem;border-radius:999px;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+.sec{display:flex;align-items:center;gap:.6rem}
+.sec-ic{display:flex;height:2.25rem;width:2.25rem;align-items:center;justify-content:center;border-radius:.8rem;background:#e7f4ec;color:#166534;flex-shrink:0}
+.form-field{width:100%;border:1px solid #cdded3;border-radius:.8rem;padding:.75rem .85rem;outline:none;background:#fffefb;color:var(--ink)}
+.form-field:focus{border-color:#247a61;box-shadow:0 0 0 3px rgba(36,122,97,.15)}
+.form-field:read-only{background:#eef7f1;color:#35554a}
+.tab-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1rem;border-radius:.8rem;font-weight:700;font-size:.85rem;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none}
+a.tab-btn:hover{background:#eef7f1}
+.tab-btn.active{background:var(--leaf-d);color:#fff;border-color:var(--leaf-d)}
+span.tab-btn.active{cursor:default}
+.nice-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.nice-table th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:.55rem;border-bottom:2px solid var(--line);white-space:nowrap}
+.nice-table td{padding:.6rem .55rem;border-bottom:1px solid #e8f0ea;vertical-align:top}
+.nice-table tbody tr:hover{background:#f4faf6}
+#qr-reader video{border-radius:.8rem}
+button{cursor:pointer}
+.doc{font-family:"DM Sans",sans-serif;color:#111}
+#print-modal{display:none}
+#print-modal.open{display:flex}
+#print-area{display:none}
+@media print{
+  body{background:#fff !important}
+  body *{visibility:hidden !important}
+  #print-area,#print-area *{visibility:visible !important}
+  #print-area{display:block !important;position:absolute !important;left:0;top:0;width:100% !important;padding:16px !important;background:#fff !important}
+  #print-modal{position:static !important;display:block !important}
+  #print-modal .no-print{display:none !important}
+  .no-print{display:none !important}
+}
+</style>
+</head>
+<body>
+<div class="max-w-6xl mx-auto px-4 py-6 no-print">
+<header class="bank-card overflow-hidden mb-6">
+<div class="grid md:grid-cols-2">
+<div class="p-6 sm:p-8">
+<div class="flex items-center gap-3 mb-4"><div class="brand-logo"><i data-lucide="landmark" class="h-5 w-5"></i></div>
+<div><div class="text-sm font-extrabold tracking-wide text-emerald-900">SMK YP.79 MAJALAYA</div><div class="text-xs font-semibold tracking-widest text-emerald-700">BANK MINI • TELLER</div></div></div>
+<h1 class="heading-font text-3xl sm:text-4xl font-bold leading-tight">Input Transaksi Tunai</h1>
+<p class="mt-3 text-sm leading-relaxed text-slate-600">Setor &amp; tarik tunai per NIS → preview nota → kunci &amp; simpan → cetak struk.</p>
+<div class="mt-4 flex flex-wrap gap-2 text-xs"><span class="pill pill-live"><span class="dot"></span>MODE: Publik (online)</span><span class="pill">💰 Role: Teller</span></div>
+</div>
+<div class="p-6 sm:p-8 bg-gradient-to-br from-emerald-900 via-emerald-700 to-emerald-500 text-white">
+<p class="text-sm font-semibold text-emerald-100">TRANSAKSI HARI INI</p>
+<p id="today-count" class="heading-font text-5xl font-bold mt-1">0</p>
+<p id="today-sum" class="mt-2 text-sm font-bold">Rp0</p>
+</div>
+</div>
+<nav class="flex flex-wrap gap-2 p-4 border-t border-emerald-900/10 bg-emerald-50/50">
+<a href="index.html" class="tab-btn">👤 Nasabah</a><a href="cs.html" class="tab-btn">📝 CS</a><span class="tab-btn active">💰 Teller</span><a href="backoffice.html" class="tab-btn">🗂️ Back Office</a>
+<span class="ml-auto text-xs self-center text-slate-500" id="auth-state">Teller: belum login</span>
+</nav>
+</header>
+<section class="bank-card p-5 sm:p-7">
+<div id="login-box">
+<div class="sec"><span class="sec-ic"><i data-lucide="lock" class="h-5 w-5"></i></span><h2 class="heading-font text-xl font-bold">Login Teller</h2></div>
+<div class="grid md:grid-cols-3 gap-3 mt-4">
+<input id="login-user" class="form-field" placeholder="Username" autocomplete="username">
+<input id="login-pass" class="form-field" type="password" placeholder="Password" autocomplete="current-password">
+<button id="btn-login" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Masuk</button>
+</div><p id="login-status" class="text-sm mt-2 font-medium text-red-700"></p>
+</div>
+<div id="teller-box" class="hidden">
+<div class="flex flex-wrap items-center gap-2">
+<div class="sec"><span class="sec-ic"><i data-lucide="banknote" class="h-5 w-5"></i></span><h2 class="heading-font text-xl font-bold">Setor / Tarik Tunai</h2></div>
+<button id="btn-logout" class="ml-auto rounded-xl border px-4 py-2 text-sm font-bold">Keluar</button>
+</div>
+<form id="tx-form" class="grid md:grid-cols-2 gap-3 mt-4">
+<div><label class="text-xs font-bold">NIS <button id="btn-scan" type="button" class="ml-1 rounded-lg border border-emerald-700 px-2 py-0.5 text-xs font-bold text-emerald-800">📷 Scan</button></label><input id="f-nis" class="form-field" required autocomplete="off">
+<div id="scanner" class="hidden mt-2 rounded-xl border p-2"><div id="qr-reader" style="width:100%"></div><button id="btn-scan-stop" type="button" class="mt-2 rounded-lg border px-3 py-1.5 text-xs font-bold">Tutup kamera</button></div></div>
+<div><label class="text-xs font-bold">Nama nasabah</label><input id="f-nama" class="form-field" readonly placeholder="Otomatis terisi"></div>
+<div><label class="text-xs font-bold">Saldo saat ini</label><input id="f-saldo" class="form-field" readonly value="-"></div>
+<div><label class="text-xs font-bold">Jenis transaksi</label><select id="f-jenis" class="form-field"><option>Setor</option><option>Tarik</option></select></div>
+<div><label class="text-xs font-bold">Nominal (Rp)</label><input id="f-nominal" class="form-field" inputmode="numeric" required placeholder="50000"></div>
+<div><label class="text-xs font-bold">Tanggal</label><input id="f-tanggal" class="form-field" type="date" required></div>
+<div class="md:col-span-2"><label class="text-xs font-bold">Keterangan</label><input id="f-ket" class="form-field uppercase" placeholder="SETORAN / PENARIKAN ..."></div>
+<div class="md:col-span-2"><button class="rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white w-full" type="submit">👁️ Preview Nota</button></div>
+</form>
+<p id="tx-status" class="text-sm mt-2 font-medium"></p>
+<div class="mt-5 border-t pt-4">
+<div class="sec"><span class="sec-ic"><i data-lucide="receipt-text" class="h-5 w-5"></i></span><h3 class="font-bold">Transaksi Hari Ini (baca saja)</h3></div>
+<div id="today-list" class="space-y-2 mt-3"></div>
+</div>
+</div>
+</section>
+<footer class="text-center text-xs text-slate-500 py-6">Bank Mini SMK YP.79 Majalaya • Teller • Publik (online)</footer>
+</div>
+<div id="print-modal" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4 no-print">
+<div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] flex flex-col">
+<div class="flex items-center gap-2 p-4 border-b no-print"><b>👁️ Preview Nota</b><span class="ml-auto flex gap-2">
+<button id="btn-lock" class="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white">🔒 Kunci &amp; Simpan</button>
+<button id="btn-modal-close" class="rounded-xl border px-4 py-2 text-sm font-bold">Batal</button></span></div>
+<div class="overflow-auto p-4 bg-slate-100"><div id="print-preview" class="doc bg-white p-6 shadow"></div></div>
+</div>
+</div>
+<div id="print-area" class="doc"></div>
+<script>
+const firebaseConfig = { apiKey:"GANTI_API_KEY", authDomain:"GANTI.firebaseapp.com", projectId:"GANTI", appId:"GANTI" };
+const SHEETS_API = "";
+const USE_FIREBASE = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("GANTI");
+const USE_SHEETS = SHEETS_API.startsWith("https://");
+let db = null;
+if (USE_FIREBASE && window.firebase) { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
+const $ = id => document.getElementById(id);
+const rp = n => "Rp" + (Number(n)||0).toLocaleString("id-ID") + ",00";
+const todayISO = () => { const d=new Date(); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const tglID = v => { if(!v) return "-"; try{ return new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(v+"T00:00:00")); }catch(e){ return v; } };
+async function sha256(s){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const LS = { get:(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } }, set:(k,v)=>localStorage.setItem(k, JSON.stringify(v)) };
+const isSetor = j => j==="Setor"||j==="Setoran";
+const Store = {
+  async students(){
+    if(db){ const s=await db.collection("students").get(); const o={}; s.forEach(d=>o[d.id]=d.data()); return o; }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=students")).json(); const o={}; r.forEach(x=>o[String(x.nis)]={nama:x.nama,pinHash:x.pinHash,jurusan:x.jurusan||"",alamat:x.alamat||"",noHp:x.noHp||"",tanggalJam:x.tanggalJam||""}); return o; }
+    return LS.get("bm2_students",{});
+  },
+  async transactions(){
+    if(db){ const s=await db.collection("transactions").orderBy("tanggal","asc").get(); return s.docs.map(d=>({id:d.id,...d.data()})); }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=transactions")).json(); return r.map(x=>({id:String(x.id),nis:String(x.nis),nama:x.nama,jenis:x.jenis,nominal:Number(x.nominal),tanggal:x.tanggal,tanggalJam:x.tanggalJam||"",keterangan:x.keterangan})); }
+    return LS.get("bm2_tx",[]);
+  },
+  async addTx(tx){
+    if(db){ const r=await db.collection("transactions").add(Object.assign({createdAt:new Date().toISOString()},tx)); return r.id; }
+    const id="T"+Date.now().toString(36).toUpperCase();
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify(Object.assign({action:"addTx",id},tx))}); return id; }
+    const a=LS.get("bm2_tx",[]); a.push(Object.assign({id},tx)); LS.set("bm2_tx",a); return id;
+  }
+};
+async function seedIfEmpty(){
+  const s=await Store.students(); if(Object.keys(s).length) return false;
+  try{
+    const t=await (await fetch("seed-nasabah.csv")).text();
+    for(const ln of t.split(/\r?\n/).slice(1)){
+      const m=ln.match(/^\s*([^,]+),"?(.*?)"?,\s*(\d{4,6})\s*$/); if(!m) continue;
+      await Store.upsertStudentSafe(m[1].trim().toUpperCase(),{nama:m[2].trim().toUpperCase(),pinHash:await sha256(m[3])});
+    } return true;
+  }catch(e){ return false; }
+}
+Store.upsertStudentSafe = async (nis,obj)=>{
+  if(db){ await db.collection("students").doc(nis).set(Object.assign({updatedAt:new Date().toISOString()},obj),{merge:true}); return; }
+  if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify(Object.assign({action:"upsertStudent",nis},obj))}); return; }
+  const s=LS.get("bm2_students",{}); s[nis]=Object.assign(s[nis]||{},obj); LS.set("bm2_students",s);
+};
+function getUser(){ const a=LS.get("bm_teller",null); if(a) return a; const d={u:"teller",h:"00a7937acccd6c0b9d0f1f2b587d42e4e60886539b8f2ea65aac1b8c96fb83aa"}; LS.set("bm_teller",d); return d; }
+const isLogin = () => sessionStorage.getItem("bm_teller_sess")==="1";
+let cacheS={}, cacheT=[];
+function saldoNIS(nis){ return cacheT.filter(t=>t.nis===nis).reduce((s,t)=>s+(isSetor(t.jenis)?+t.nominal:-t.nominal),0); }
+async function refresh(){
+  cacheS=await Store.students(); cacheT=await Store.transactions();
+  const t=todayISO(), list=cacheT.filter(x=>x.tanggal===t);
+  $("today-count").textContent=list.length;
+  $("today-sum").textContent=rp(list.reduce((s,x)=>s+(isSetor(x.jenis)?+x.nominal:-x.nominal),0));
+  $("today-list").innerHTML=[...list].reverse().map(x=>`<div class="border rounded-xl p-3 text-sm flex gap-2"><div><b>${esc(x.nama)}</b> <span class="text-xs bg-slate-100 rounded-full px-2 py-0.5 font-bold">NIS ${esc(x.nis)}</span> <span class="text-xs rounded-full px-2 py-0.5 font-bold ${isSetor(x.jenis)?"bg-emerald-100 text-emerald-800":"bg-orange-100 text-orange-800"}">${esc(x.jenis)}</span><div class="text-xs text-slate-500">${esc(x.keterangan||"-")} • ${x.tanggalJam?new Date(x.tanggalJam).toLocaleTimeString("id-ID"):""}</div></div><b class="ml-auto whitespace-nowrap">${isSetor(x.jenis)?"+":"−"} ${rp(x.nominal)}</b></div>`).join("")||`<p class="text-sm text-slate-500">Belum ada transaksi hari ini.</p>`;
+}
+function syncAuth(){ const on=isLogin(); $("login-box").classList.toggle("hidden",on); $("teller-box").classList.toggle("hidden",!on); $("auth-state").textContent="Teller: "+(on?"LOGIN ✔":"belum login"); }
+$("btn-login").onclick=async()=>{
+  const a=getUser();
+  if($("login-user").value.trim()===a.u && await sha256($("login-pass").value)===a.h){ sessionStorage.setItem("bm_teller_sess","1"); $("login-status").textContent=""; syncAuth(); }
+  else $("login-status").textContent="Username / password salah.";
+};
+$("btn-logout").onclick=()=>{ sessionStorage.removeItem("bm_teller_sess"); syncAuth(); };
+$("f-nis").addEventListener("input",e=>{
+  e.target.value=e.target.value.toUpperCase().replace(/\s/g,"");
+  const k=cacheS[e.target.value];
+  $("f-nama").value=k?k.nama:""; $("f-saldo").value=k?rp(saldoNIS(e.target.value)):"-";
+});
+let qrObj=null;
+async function stopScan(){ try{ if(qrObj) await qrObj.stop(); }catch(e){} try{ if(qrObj) await qrObj.clear(); }catch(e){} $("scanner").classList.add("hidden"); }
+$("btn-scan").onclick=async()=>{
+  if(!window.Html5Qrcode){ alert("Library scan gagal dimuat."); return; }
+  $("scanner").classList.remove("hidden");
+  try{
+    qrObj=qrObj||new Html5Qrcode("qr-reader");
+    await qrObj.start({facingMode:"environment"},{fps:10,qrbox:250},txt=>{
+      const nis=String(txt||"").toUpperCase().replace(/\s+/g,"").replace(/^NIS[:\-]?/,"");
+      if(!nis) return;
+      $("f-nis").value=nis; $("f-nis").dispatchEvent(new Event("input"));
+      stopScan(); $("f-nominal").focus();
+    });
+  }catch(e){ alert("Kamera tidak bisa dibuka. Ketik NIS manual."); stopScan(); }
+};
+$("btn-scan-stop").onclick=stopScan;
+let draft=null;
+function struk(d, saved){
+  return `<div style="max-width:300px;margin:0 auto;font-size:12px;color:#111">`
+  +`<div style="text-align:center"><b>BANK MINI • SMK YP.79 MAJALAYA</b><br>Jl. Pendidikan Majalaya<br>====================<br><b>STRUK ${esc(d.jenis).toUpperCase()} TUNAI</b><br>====================</div>`
+  +`<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><tbody>`
+  +`<tr><td>No. Nota</td><td>:</td><td style="text-align:right"><b>${esc(d.id)}</b></td></tr>`
+  +`<tr><td>NIS</td><td>:</td><td style="text-align:right">${esc(d.nis)}</td></tr>`
+  +`<tr><td>Nama</td><td>:</td><td style="text-align:right">${esc(d.nama)}</td></tr>`
+  +`<tr><td>Nominal</td><td>:</td><td style="text-align:right"><b>${rp(d.nominal)}</b></td></tr>`
+  +`<tr><td>Waktu</td><td>:</td><td style="text-align:right">${new Date(d.tanggalJam).toLocaleString("id-ID")}</td></tr>`
+  +`<tr><td>Ket</td><td>:</td><td style="text-align:right">${esc(d.keterangan||"-")}</td></tr>`
+  +`</tbody></table><div style="text-align:center">====================<br>${saved?"*** TERSIMPAN ***<br>":"*** PREVIEW — BELUM TERSIMPAN ***<br>"}Terima kasih<br><br>Teller,<br><br>( ............ )</div></div>`;
+}
+function preview(html){ $("print-preview").innerHTML=html; $("print-area").innerHTML=html; $("print-modal").classList.add("open"); }
+$("btn-modal-close").onclick=()=>$("print-modal").classList.remove("open");
+$("tx-form").onsubmit=e=>{
+  e.preventDefault();
+  if(!isLogin()) return alert("Login Teller dulu.");
+  const nis=$("f-nis").value.trim().toUpperCase(), jenis=$("f-jenis").value;
+  const nominal=Number(String($("f-nominal").value).replace(/\D/g,""));
+  const tanggal=$("f-tanggal").value||todayISO(), ket=$("f-ket").value.trim().toUpperCase()||"-";
+  const stu=cacheS[nis];
+  if(!stu){ $("tx-status").textContent="NIS belum terdaftar. Minta CS mendaftarkan dulu."; return; }
+  if(!nominal||nominal<=0){ $("tx-status").textContent="Nominal tidak valid."; return; }
+  if(jenis==="Tarik" && nominal>saldoNIS(nis)){ $("tx-status").textContent="Saldo tidak cukup. Sisa "+rp(saldoNIS(nis)); return; }
+  draft={id:"T"+Date.now().toString(36).toUpperCase(),nis,nama:stu.nama,jenis,nominal,tanggal,tanggalJam:new Date().toISOString(),keterangan:ket,createdBy:"teller"};
+  preview(struk(draft,false));
+  $("tx-status").textContent="Periksa preview nota. Klik Kunci & Simpan bila sudah benar.";
+};
+$("btn-lock").onclick=async()=>{
+  if(!draft) return;
+  $("btn-lock").disabled=true;
+  const id=await Store.addTx(draft);
+  draft.id=id;
+  preview(struk(draft,true));
+  $("btn-lock").disabled=false;
+  $("btn-lock").outerHTML='<button id="btn-print-now" class="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white">🖨️ Cetak Struk</button>';
+  $("btn-print-now").onclick=()=>window.print();
+  $("tx-status").textContent="Transaksi terkunci & tersimpan ✔";
+  e_reset(); await refresh();
+  function e_reset(){ $("tx-form").reset(); $("f-nama").value=""; $("f-saldo").value="-"; $("f-tanggal").value=todayISO(); draft=null; }
+};
+$("f-tanggal").value=todayISO();
+syncAuth(); (async()=>{ await seedIfEmpty(); await refresh(); })();
+lucide.createIcons();
+</script>
+</body>
+</html>
