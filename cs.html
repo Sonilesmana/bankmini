@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS — Pendaftaran Nasabah | Bank Mini SMK YP.79</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17342f;--leaf:#247a61;--leaf-d:#174c3e;--line:#dce8df;--muted:#647d75;--bg:#f1f6f3}
+*{box-sizing:border-box}
+body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:radial-gradient(1100px 380px at 50% -90px,#dff0e6 0%,rgba(223,240,230,0) 60%),var(--bg)}
+.heading-font{font-family:"Fraunces",serif}
+.bank-card{border:1px solid var(--line);box-shadow:0 14px 35px rgba(25,68,54,.08);background:#fff;border-radius:1.25rem}
+.brand-logo{display:flex;height:2.75rem;width:2.75rem;align-items:center;justify-content:center;border-radius:1rem;background:linear-gradient(135deg,#174c3e,#31a075);color:#fff;box-shadow:0 6px 14px rgba(23,76,62,.3);flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;background:#fff;border:1px solid var(--line);padding:.32rem .7rem;font-weight:700;font-size:.72rem;color:#2c4b43}
+.pill-live{background:#e9f7ef;border-color:#bfe6cd;color:#166534}
+.pill .dot{height:.5rem;width:.5rem;border-radius:999px;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+.sec{display:flex;align-items:center;gap:.6rem}
+.sec-ic{display:flex;height:2.25rem;width:2.25rem;align-items:center;justify-content:center;border-radius:.8rem;background:#e7f4ec;color:#166534;flex-shrink:0}
+.form-field{width:100%;border:1px solid #cdded3;border-radius:.8rem;padding:.75rem .85rem;outline:none;background:#fffefb;color:var(--ink)}
+.form-field:focus{border-color:#247a61;box-shadow:0 0 0 3px rgba(36,122,97,.15)}
+.tab-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1rem;border-radius:.8rem;font-weight:700;font-size:.85rem;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none}
+a.tab-btn:hover{background:#eef7f1}
+.tab-btn.active{background:var(--leaf-d);color:#fff;border-color:var(--leaf-d)}
+span.tab-btn.active{cursor:default}
+.nice-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.nice-table th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:.55rem;border-bottom:2px solid var(--line);white-space:nowrap}
+.nice-table td{padding:.6rem .55rem;border-bottom:1px solid #e8f0ea;vertical-align:top}
+.nice-table tbody tr:hover{background:#f4faf6}
+button{cursor:pointer}
+</style>
+</head>
+<body>
+<div class="max-w-6xl mx-auto px-4 py-6">
+<header class="bank-card overflow-hidden mb-6">
+<div class="grid md:grid-cols-2">
+<div class="p-6 sm:p-8">
+<div class="flex items-center gap-3 mb-4"><div class="brand-logo"><i data-lucide="landmark" class="h-5 w-5"></i></div>
+<div><div class="text-sm font-extrabold tracking-wide text-emerald-900">SMK YP.79 MAJALAYA</div><div class="text-xs font-semibold tracking-widest text-emerald-700">BANK MINI • CUSTOMER SERVICE</div></div></div>
+<h1 class="heading-font text-3xl sm:text-4xl font-bold leading-tight">Pendaftaran Nasabah Baru</h1>
+<p class="mt-3 text-sm leading-relaxed text-slate-600">Formulir data lengkap: NIS, nama, jurusan, alamat, no HP, PIN. Tanggal &amp; jam tercatat otomatis.</p>
+<div class="mt-4 flex flex-wrap gap-2 text-xs"><span class="pill pill-live"><span class="dot"></span>MODE: Publik (online)</span><span class="pill">📝 Role: CS</span></div>
+</div>
+<div class="p-6 sm:p-8 bg-gradient-to-br from-emerald-900 via-emerald-700 to-emerald-500 text-white">
+<p class="text-sm font-semibold text-emerald-100">TOTAL NASABAH TERDAFTAR</p>
+<p id="cs-count" class="heading-font text-5xl font-bold mt-1">0</p>
+<p class="mt-3 text-xs text-emerald-100">PIN awal disarankan = 4 digit terakhir NIS. Berikan PIN ke nasabah.</p>
+</div>
+</div>
+<nav class="flex flex-wrap gap-2 p-4 border-t border-emerald-900/10 bg-emerald-50/50">
+<a href="index.html" class="tab-btn">👤 Nasabah</a><span class="tab-btn active">📝 CS</span><a href="teller.html" class="tab-btn">💰 Teller</a><a href="backoffice.html" class="tab-btn">🗂️ Back Office</a>
+<span class="ml-auto text-xs self-center text-slate-500" id="auth-state">CS: belum login</span>
+</nav>
+</header>
+<section class="bank-card p-5 sm:p-7">
+<div id="login-box">
+<div class="sec"><span class="sec-ic"><i data-lucide="lock" class="h-5 w-5"></i></span><h2 class="heading-font text-xl font-bold">Login Customer Service</h2></div>
+<div class="grid md:grid-cols-3 gap-3 mt-4">
+<input id="login-user" class="form-field" placeholder="Username" autocomplete="username">
+<input id="login-pass" class="form-field" type="password" placeholder="Password" autocomplete="current-password">
+<button id="btn-login" class="rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white">Masuk</button>
+</div><p id="login-status" class="text-sm mt-2 font-medium text-red-700"></p>
+</div>
+<div id="cs-box" class="hidden">
+<div class="flex flex-wrap items-center gap-2">
+<div class="sec"><span class="sec-ic"><i data-lucide="user-plus" class="h-5 w-5"></i></span><h2 class="heading-font text-xl font-bold">Formulir Nasabah Baru</h2></div>
+<button id="btn-logout" class="ml-auto rounded-xl border px-4 py-2 text-sm font-bold">Keluar</button>
+</div>
+<form id="reg-form" class="grid md:grid-cols-2 gap-3 mt-4">
+<div><label class="text-xs font-bold">NIS *</label><input id="r-nis" class="form-field" required autocomplete="off"></div>
+<div><label class="text-xs font-bold">Nama lengkap *</label><input id="r-nama" class="form-field uppercase" required></div>
+<div><label class="text-xs font-bold">Jurusan / Program *</label><select id="r-jurusan" class="form-field"><option>AKL</option><option>TKJ</option><option>TSM</option><option>Lainnya</option></select></div>
+<div><label class="text-xs font-bold">No HP aktif *</label><input id="r-hp" class="form-field" inputmode="tel" required placeholder="08..."></div>
+<div class="md:col-span-2"><label class="text-xs font-bold">Alamat rumah *</label><input id="r-alamat" class="form-field" required></div>
+<div><label class="text-xs font-bold">PIN keamanan (4–6 digit) *</label><input id="r-pin" class="form-field" inputmode="numeric" maxlength="6" required placeholder="Otomatis 4 digit terakhir NIS bila kosong"></div>
+<div class="flex items-end"><button class="rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white w-full" type="submit">💾 Daftarkan Nasabah</button></div>
+</form>
+<p id="reg-status" class="text-sm mt-2 font-medium"></p>
+<div class="mt-5 border-t pt-4">
+<div class="flex flex-wrap gap-2 items-center">
+<div class="sec"><span class="sec-ic"><i data-lucide="users" class="h-5 w-5"></i></span><h3 class="font-bold">Data Nasabah</h3></div>
+<input id="cari" class="form-field !w-auto ml-auto" placeholder="Cari NIS / nama..." style="max-width:220px">
+</div>
+<div class="overflow-x-auto mt-3"><table class="nice-table"><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Jurusan</th><th>No HP</th><th>Tgl Daftar</th></tr></thead><tbody id="nsb-body"></tbody></table></div>
+</div>
+</div>
+</section>
+<footer class="text-center text-xs text-slate-500 py-6">Bank Mini SMK YP.79 Majalaya • CS • Publik (online)</footer>
+</div>
+<script>
+const firebaseConfig = { apiKey:"GANTI_API_KEY", authDomain:"GANTI.firebaseapp.com", projectId:"GANTI", appId:"GANTI" };
+const SHEETS_API = "";
+const USE_FIREBASE = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("GANTI");
+const USE_SHEETS = SHEETS_API.startsWith("https://");
+let db = null;
+if (USE_FIREBASE && window.firebase) { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); }
+const $ = id => document.getElementById(id);
+const tglID = v => { if(!v) return "-"; try{ return new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(v+"T00:00:00")); }catch(e){ return v; } };
+async function sha256(s){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const LS = { get:(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } }, set:(k,v)=>localStorage.setItem(k, JSON.stringify(v)) };
+const Store = {
+  async students(){
+    if(db){ const s=await db.collection("students").get(); const o={}; s.forEach(d=>o[d.id]=d.data()); return o; }
+    if(USE_SHEETS){ const r=await (await fetch(SHEETS_API+"?action=students")).json(); const o={}; r.forEach(x=>o[String(x.nis)]={nama:x.nama,pinHash:x.pinHash,jurusan:x.jurusan||"",alamat:x.alamat||"",noHp:x.noHp||"",tanggalJam:x.tanggalJam||""}); return o; }
+    return LS.get("bm2_students",{});
+  },
+  async upsertStudent(nis,obj){
+    if(db){ await db.collection("students").doc(nis).set(Object.assign({updatedAt:new Date().toISOString()},obj),{merge:true}); return; }
+    if(USE_SHEETS){ await fetch(SHEETS_API,{method:"POST",body:JSON.stringify(Object.assign({action:"upsertStudent",nis},obj))}); return; }
+    const s=LS.get("bm2_students",{}); s[nis]=Object.assign(s[nis]||{},obj); LS.set("bm2_students",s);
+  }
+};
+async function seedIfEmpty(){
+  const s=await Store.students(); if(Object.keys(s).length) return false;
+  try{
+    const t=await (await fetch("seed-nasabah.csv")).text();
+    for(const ln of t.split(/\r?\n/).slice(1)){
+      const m=ln.match(/^\s*([^,]+),"?(.*?)"?,\s*(\d{4,6})\s*$/); if(!m) continue;
+      await Store.upsertStudent(m[1].trim().toUpperCase(),{nama:m[2].trim().toUpperCase(),pinHash:await sha256(m[3]),jurusan:"",alamat:"",noHp:"",tanggalJam:new Date().toISOString()});
+    } return true;
+  }catch(e){ return false; }
+}
+const DEF_USERS={cs:{u:"cs",h:"3c390789837c84b02925cd0abfafd904987e0c5b82fe1ede128767e902bfd1e5"}};
+function getUser(){ const a=LS.get("bm_cs",null); if(a) return a; const d={u:"cs",h:DEF_USERS.cs.h}; LS.set("bm_cs",d); return d; }
+const isLogin = () => sessionStorage.getItem("bm_cs_sess")==="1";
+let cache={};
+async function refresh(){
+  cache=await Store.students();
+  const keys=Object.keys(cache).sort();
+  $("cs-count").textContent=keys.length;
+  const q=($("cari").value||"").toUpperCase();
+  $("nsb-body").innerHTML=keys.filter(k=>!q||k.includes(q)||(cache[k].nama||"").includes(q)).map((k,i)=>{
+    const v=cache[k];
+    return `<tr><td>${i+1}</td><td><b>${esc(k)}</b></td><td>${esc(v.nama||"-")}</td><td>${esc(v.jurusan||"-")}</td><td>${esc(v.noHp||"-")}</td><td>${v.tanggalJam?new Date(v.tanggalJam).toLocaleString("id-ID"):tglID((v.tanggalJam||"").slice(0,10))}</td></tr>`;
+  }).join("")||`<tr><td colspan="6" class="p-4 text-center text-slate-500">Belum ada nasabah.</td></tr>`;
+}
+$("btn-login").onclick=async()=>{
+  const a=getUser();
+  if($("login-user").value.trim()===a.u && await sha256($("login-pass").value)===a.h){ sessionStorage.setItem("bm_cs_sess","1"); $("login-status").textContent=""; syncAuth(); }
+  else $("login-status").textContent="Username / password salah.";
+};
+$("btn-logout").onclick=()=>{ sessionStorage.removeItem("bm_cs_sess"); syncAuth(); };
+function syncAuth(){ const on=isLogin(); $("login-box").classList.toggle("hidden",on); $("cs-box").classList.toggle("hidden",!on); $("auth-state").textContent="CS: "+(on?"LOGIN ✔":"belum login"); }
+$("reg-form").onsubmit=async e=>{
+  e.preventDefault();
+  if(!isLogin()) return alert("Login CS dulu.");
+  const nis=$("r-nis").value.trim().toUpperCase(), nama=$("r-nama").value.trim().toUpperCase();
+  const jurusan=$("r-jurusan").value, hp=$("r-hp").value.trim(), alamat=$("r-alamat").value.trim();
+  let pin=$("r-pin").value.trim();
+  if(!nis||!nama||!hp||!alamat){ $("reg-status").textContent="Lengkapi semua kolom bertanda *."; return; }
+  if(cache[nis]){ $("reg-status").textContent="NIS sudah terdaftar ("+cache[nis].nama+")."; return; }
+  if(!/^\d{4,6}$/.test(pin)){ pin=(nis.replace(/\D/g,"").slice(-4)||"1234").padStart(4,"0"); }
+  await Store.upsertStudent(nis,{nama,pinHash:await sha256(pin),jurusan,alamat,noHp:hp,tanggalJam:new Date().toISOString()});
+  e.target.reset();
+  $("reg-status").textContent="Nasabah "+nama+" terdaftar ✔ PIN: "+pin+" (catat & berikan ke nasabah).";
+  await refresh();
+};
+$("cari").oninput=refresh;
+$("r-nis").addEventListener("input",e=>{ e.target.value=e.target.value.toUpperCase().replace(/\s/g,""); });
+syncAuth(); (async()=>{ await seedIfEmpty(); await refresh(); })();
+lucide.createIcons();
+</script>
+</body>
+</html>
