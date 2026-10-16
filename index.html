@@ -11,16 +11,35 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#17342f;--leaf:#247a61;--line:#dce8df}
+:root{--ink:#17342f;--leaf:#247a61;--leaf-d:#174c3e;--line:#dce8df;--muted:#647d75;--bg:#f1f6f3}
 *{box-sizing:border-box}
-body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfdfb}
+body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:radial-gradient(1100px 380px at 50% -90px,#dff0e6 0%,rgba(223,240,230,0) 60%),var(--bg)}
 .heading-font{font-family:"Fraunces",serif}
-.bank-card{border:1px solid var(--line);box-shadow:0 14px 35px rgba(25,68,54,.08);background:#fff}
-.form-field{width:100%;border:1px solid #cdded3;border-radius:.8rem;padding:.75rem .85rem;outline:none;background:#fffefb;color:var(--ink)}
+.bank-card{border:1px solid var(--line);box-shadow:0 14px 35px rgba(25,68,54,.08);background:#fff;border-radius:1.25rem}
+.brand-logo{display:flex;height:2.75rem;width:2.75rem;align-items:center;justify-content:center;border-radius:1rem;background:linear-gradient(135deg,#174c3e,#31a075);color:#fff;box-shadow:0 6px 14px rgba(23,76,62,.3);flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;background:#fff;border:1px solid var(--line);padding:.32rem .7rem;font-weight:700;font-size:.72rem;color:#2c4b43}
+.pill-live{background:#e9f7ef;border-color:#bfe6cd;color:#166534}
+.pill .dot{height:.5rem;width:.5rem;border-radius:999px;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+.balance-hero{background:linear-gradient(135deg,#123f33 0%,#1d6a4f 55%,#3aa173 100%);position:relative;overflow:hidden;color:#fff}
+.balance-hero::after{content:"";position:absolute;width:240px;height:240px;border:38px solid rgba(255,255,255,.08);border-radius:999px;right:-70px;top:-90px}
+.balance-hero .stat-in,.balance-hero .stat-out{border-radius:.9rem;background:rgba(255,255,255,.14);padding:.7rem .8rem;position:relative;z-index:1}
+.balance-hero .lbl{font-size:.7rem;color:#d7efe3;margin:0}
+.balance-hero .val{font-weight:800;margin:.15rem 0 0}
+.sec{display:flex;align-items:center;gap:.6rem}
+.sec-ic{display:flex;height:2.25rem;width:2.25rem;align-items:center;justify-content:center;border-radius:.8rem;background:#e7f4ec;color:#166534;flex-shrink:0}
+.form-field{width:100%;border:1px solid #cdded3;border-radius:.8rem;padding:.75rem .85rem;outline:none;background:#fffefb;color:var(--ink);transition:border-color .2s,box-shadow .2s}
 .form-field:focus{border-color:#247a61;box-shadow:0 0 0 3px rgba(36,122,97,.15)}
 .form-field:read-only{background:#eef7f1;color:#35554a}
-.tab-btn{padding:.6rem 1rem;border-radius:.8rem;font-weight:700;font-size:.85rem;border:1px solid var(--line);background:#fff}
-.tab-btn.active{background:#174c3e;color:#fff;border-color:#174c3e}
+.tab-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1rem;border-radius:.8rem;font-weight:700;font-size:.85rem;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;transition:background .15s,transform .15s}
+a.tab-btn:hover{background:#eef7f1;transform:translateY(-1px)}
+.tab-btn.active{background:var(--leaf-d);color:#fff;border-color:var(--leaf-d)}
+span.tab-btn.active{cursor:default}
+.nice-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.nice-table th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:.55rem;border-bottom:2px solid var(--line);white-space:nowrap}
+.nice-table td{padding:.6rem .55rem;border-bottom:1px solid #e8f0ea;vertical-align:top}
+.nice-table tbody tr:hover{background:#f4faf6}
+#qr-reader video{border-radius:.8rem}
+button{cursor:pointer}
 .doc{font-family:"DM Sans",sans-serif;color:#111}
 .doc h3{margin:0}
 .doc table{width:100%;border-collapse:collapse;font-size:12px}
@@ -49,24 +68,27 @@ body{margin:0;font-family:"DM Sans",sans-serif;color:var(--ink);background:#fbfd
     <div class="grid md:grid-cols-2 hero-grid">
       <div class="p-6 sm:p-8">
         <div class="flex items-center gap-3 mb-4">
-          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-800 text-white"><i data-lucide="landmark" class="h-5 w-5"></i></div>
-          <span class="text-sm font-bold tracking-wide text-emerald-800">SMK YP.79 MAJALAYA • BANK MINI</span>
+          <div class="brand-logo"><i data-lucide="landmark" class="h-5 w-5"></i></div>
+          <div><div class="text-sm font-extrabold tracking-wide text-emerald-900">SMK YP.79 MAJALAYA</div><div class="text-xs font-semibold tracking-widest text-emerald-700">BANK MINI • TABUNGAN SISWA</div></div>
         </div>
-        <h1 class="heading-font text-3xl sm:text-4xl font-bold leading-tight">Bank Mini v2 — Preview &amp; Cetak, Cek Online Nasabah</h1>
-        <p class="mt-3 text-sm leading-relaxed text-slate-600">1 file HTML. Mode <b>Petugas</b> dikunci username + password (hanya 1 operator bisa input/hapus). Mode <b>Nasabah</b> cek saldo sendiri pakai NIS + PIN, bisa preview &amp; cetak buku tabungan. Laporan harian bisa preview &amp; print.</p>
+        <h1 class="heading-font text-3xl sm:text-4xl font-bold leading-tight">Bank Mini — Cek Saldo &amp; Cetak Nota</h1>
+        <p class="mt-3 text-sm leading-relaxed text-slate-600">Petugas dikunci 1 akun operator. Nasabah cek saldo sendiri (NIS + PIN) dan cetak buku tabungan. Laporan harian siap preview &amp; print.</p>
         <div class="mt-4 flex flex-wrap gap-2 text-xs">
-          <span id="mode-badge" class="rounded-full bg-slate-100 px-3 py-1 font-bold">MODE: Publik (online)</span>
-          <span class="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-800">Single operator</span>
+          <span id="mode-badge" class="pill pill-live"><span class="dot"></span>MODE: Publik (online)</span>
+          <span class="pill">🔒 1 operator</span>
+          <span class="pill">🧾 Nota rapi siap cetak</span>
         </div>
       </div>
-      <div class="bg-gradient-to-br from-emerald-900 via-emerald-700 to-emerald-500 text-white p-6 sm:p-8">
-        <p class="text-sm font-semibold text-emerald-100">RINGKASAN DANA</p>
+      <div class="balance-hero p-6 sm:p-8">
+        <div class="relative z-10">
+        <div class="flex items-center justify-between"><p class="text-sm font-semibold text-emerald-100">RINGKASAN DANA</p><i data-lucide="wallet" class="h-5 w-5 text-emerald-100"></i></div>
         <p id="balance-value" class="heading-font text-4xl font-bold mt-1">Rp0</p>
         <div class="grid grid-cols-2 gap-3 mt-5 text-sm">
-          <div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Total Setoran</p><p id="deposit-total" class="font-bold">Rp0</p></div>
-          <div class="rounded-xl bg-white/15 p-3"><p class="text-emerald-100 text-xs">Total Penarikan</p><p id="withdrawal-total" class="font-bold">Rp0</p></div>
+          <div class="stat-in"><p class="lbl">↙ Total Setoran</p><p id="deposit-total" class="val">Rp0</p></div>
+          <div class="stat-out"><p class="lbl">↗ Total Penarikan</p><p id="withdrawal-total" class="val">Rp0</p></div>
         </div>
         <p class="mt-4 text-xs text-emerald-100">Akun petugas dipegang 1 operator. Nasabah cek saldo pakai NIS + PIN.</p>
+        </div>
       </div>
     </div>
     <nav class="flex flex-wrap gap-2 p-4 border-t border-emerald-900/10 bg-emerald-50/50">
@@ -213,33 +235,62 @@ function renderTxList(){
 }
 
 /* ================= DOKUMEN CETAK ================= */
-function kop(){ return `<div style="text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:12px">
-  <div style="font-size:13px;font-weight:700;letter-spacing:1px">BANK MINI • SMK YP.79 MAJALAYA</div>
-  <div style="font-size:11px">Jl. Pendidikan Majalaya • Telp Sekolah • Tabungan Siswa</div></div>`; }
-function ttd(){ const t=tglID(todayISO()); return `<div style="display:flex;justify-content:space-between;margin-top:24px;font-size:12px">
-  <div style="text-align:center">Majalaya, ${t}<br>Petugas Bank Mini<br><br><br><br>( ............................ )</div>
-  <div style="text-align:center">Nasabah<br><br><br><br><br>( ............................ )</div></div>
-  <div style="font-size:10px;color:#555;margin-top:12px">Dicetak: ${new Date().toLocaleString("id-ID")} • Dokumen ini sah tanpa cap jika data sesuai sistem.</div>`; }
+/* Profil nota + dokumen cetak (rapi, hemat tinta) */
+const DEF_PROFILE={sekolah:"BANK MINI • SMK YP.79 MAJALAYA",alamat:"Jl. Pendidikan Majalaya",telp:"",petugas:""};
+function getProfile(){ try{ return Object.assign({},DEF_PROFILE,LS.get("bm2_profile",{})); }catch(e){ return Object.assign({},DEF_PROFILE); } }
+function loadProfile(){ const p=getProfile(); if(!$("p-sekolah"))return; $("p-sekolah").value=p.sekolah; $("p-alamat").value=p.alamat; $("p-telp").value=p.telp; $("p-petugas").value=p.petugas; }
+function kop(){ const p=getProfile();
+  return '<div style="text-align:center">'
+  +'<div style="font-size:18px;font-weight:800;letter-spacing:.4px">'+esc(p.sekolah)+'</div>'
+  +'<div style="font-size:11px;color:#333;margin-top:2px">'+esc(p.alamat)+(p.telp?' • Telp. '+esc(p.telp):'')+'</div>'
+  +'</div><div style="border-top:3px double #000;margin:8px 0 14px"></div>';
+}
+function docTitle(t,sub){
+  return '<div style="text-align:center;margin-bottom:10px">'
+  +'<div style="font-size:14px;font-weight:800;letter-spacing:1px;text-decoration:underline">'+t+'</div>'
+  +(sub?'<div style="font-size:11px;margin-top:3px;color:#333">'+sub+'</div>':"")
+  +'</div>';
+}
+function ttd(siswa){ const p=getProfile(); const t=tglID(todayISO()); const dots="( ............................ )";
+  return '<div style="display:flex;justify-content:space-between;gap:16px;margin-top:26px;font-size:12px">'
+  +'<div style="text-align:center;flex:1">Majalaya, '+t+'<br>Petugas Bank Mini<br><br><br><br><b><u>'+(p.petugas?esc(p.petugas):dots)+'</u></b></div>'
+  +'<div style="text-align:center;flex:1"><br>Nasabah'+(siswa?'<br>'+esc(siswa):'')+'<br><br><br><b><u>'+(siswa?esc(siswa):dots)+'</u></b></div>'
+  +'</div><div style="font-size:10px;color:#555;margin-top:14px;border-top:1px solid #999;padding-top:6px">Dicetak: '+new Date().toLocaleString("id-ID")+' • Dokumen sah apabila data sesuai sistem Bank Mini.</div>';
+}
 function docBuku(nis){
   const s=cacheStudents[nis]; const nama=s?s.nama:"-";
-  const list=cacheTx.filter(t=>t.nis===nis).sort((a,b)=>a.tanggal.localeCompare(b.tanggal));
-  let saldo=0; const rows=list.map((t,i)=>{ saldo+=t.jenis==="Setoran"?+t.nominal:-t.nominal;
-    return `<tr><td>${i+1}</td><td>${tglID(t.tanggal)}</td><td>${esc(t.keterangan||"-")}</td><td class="num">${t.jenis==="Setoran"?rp(t.nominal):"-"}</td><td class="num">${t.jenis==="Penarikan"?rp(t.nominal):"-"}</td><td class="num"><b>${rp(saldo)}</b></td></tr>`; }).join("");
+  const list=cacheTx.filter(t=>t.nis===nis).sort((a,b)=>String(a.tanggal).localeCompare(String(b.tanggal)));
+  let saldo=0;
+  const rows=list.map((t,i)=>{ saldo+=t.jenis==="Setoran"?+t.nominal:-t.nominal;
+    return '<tr'+(i%2?' style="background:#f6faf7"':'')+'><td>'+(i+1)+'</td><td style="white-space:nowrap">'+tglID(t.tanggal)+'</td><td>'+esc(t.keterangan||"-")+'</td><td class="num">'+(t.jenis==="Setoran"?rp(t.nominal):"—")+'</td><td class="num">'+(t.jenis==="Penarikan"?rp(t.nominal):"—")+'</td><td class="num"><b>'+rp(saldo)+'</b></td></tr>'; }).join("");
   const t=totals(list);
-  return `${kop()}<h3 style="text-align:center">BUKU TABUNGAN SISWA</h3>
-  <p style="font-size:12px">NIS: <b>${esc(nis)}</b> &nbsp; Nama: <b>${esc(nama)}</b> &nbsp; Saldo Akhir: <b>${rp(saldo)}</b><br>Total Setoran: ${rp(t.in)} • Total Penarikan: ${rp(t.out)}</p>
-  <table><thead><tr><th>No</th><th>Tanggal</th><th>Uraian</th><th>Setoran</th><th>Penarikan</th><th>Saldo</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Belum ada transaksi</td></tr>'}</tbody></table>${ttd()}`;
+  return kop()
+  +docTitle("BUKU TABUNGAN SISWA")
+  +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px"><tbody>'
+  +'<tr><td style="width:120px;color:#333">NIS</td><td style="width:10px">:</td><td style="font-weight:800">'+esc(nis)+'</td></tr>'
+  +'<tr><td style="color:#333">Nama</td><td>:</td><td style="font-weight:800">'+esc(nama)+'</td></tr>'
+  +'<tr><td style="color:#333">Saldo Akhir</td><td>:</td><td style="font-weight:800">'+rp(saldo)+'</td></tr>'
+  +'</tbody></table>'
+  +'<table><thead><tr><th style="width:28px">No</th><th>Tanggal</th><th>Uraian</th><th>Setoran (Rp)</th><th>Penarikan (Rp)</th><th>Saldo (Rp)</th></tr></thead><tbody>'
+  +(rows||'<tr><td colspan="6" style="text-align:center">Belum ada transaksi</td></tr>')
+  +'</tbody><tfoot><tr><td colspan="3" style="font-weight:800">TOTAL</td><td class="num" style="font-weight:800">'+rp(t.in)+'</td><td class="num" style="font-weight:800">'+rp(t.out)+'</td><td class="num" style="font-weight:800">'+rp(t.in-t.out)+'</td></tr></tfoot></table>'
+  +ttd(nama);
 }
 function docHarian(tanggal){
-  const list=cacheTx.filter(t=>t.tanggal===tanggal);
-  const t=totals(list);
-  const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nis)}</td><td>${esc(x.nama)}</td><td>${esc(x.jenis)}</td><td>${esc(x.keterangan||"-")}</td><td class="num">${rp(x.nominal)}</td></tr>`).join("");
-  return `${kop()}<h3 style="text-align:center">REKAP TRANSAKSI HARIAN</h3>
-  <p style="font-size:12px;text-align:center">Tanggal: <b>${tglID(tanggal)}</b> • Transaksi: <b>${list.length}</b></p>
-  <p style="font-size:12px">Total Setoran: <b>${rp(t.in)}</b> • Total Penarikan: <b>${rp(t.out)}</b> • Selisih: <b>${rp(t.in-t.out)}</b></p>
-  <table><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center">Tidak ada transaksi pada tanggal ini</td></tr>'}</tbody></table>${ttd()}`;
-}
-/* Preview → isi modal + area cetak, lalu tampilkan modal */
+  const list=cacheTx.filter(t=>t.tanggal===tanggal); const t=totals(list);
+  const rows=list.map((x,i)=>'<tr'+(i%2?' style="background:#f6faf7"':'')+'><td>'+(i+1)+'</td><td style="white-space:nowrap">'+esc(x.nis)+'</td><td>'+esc(x.nama)+'</td><td>'+esc(x.jenis)+'</td><td>'+esc(x.keterangan||"-")+'</td><td class="num">'+rp(x.nominal)+'</td></tr>').join("");
+  return kop()
+  +docTitle("REKAP TRANSAKSI HARIAN","Tanggal: <b>"+tglID(tanggal)+"</b> • Jumlah transaksi: <b>"+list.length+"</b>")
+  +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px"><tbody><tr>'
+  +'<td style="border:1px solid #333;padding:6px 8px;width:33%">Total Setoran<br><b>'+rp(t.in)+'</b></td>'
+  +'<td style="border:1px solid #333;padding:6px 8px;width:34%">Total Penarikan<br><b>'+rp(t.out)+'</b></td>'
+  +'<td style="border:1px solid #333;padding:6px 8px;width:33%">Selisih<br><b>'+rp(t.in-t.out)+'</b></td>'
+  +'</tr></tbody></table>'
+  +'<table><thead><tr><th style="width:28px">No</th><th>NIS</th><th>Nama</th><th>Jenis</th><th>Keterangan</th><th>Nominal (Rp)</th></tr></thead><tbody>'
+  +(rows||'<tr><td colspan="6" style="text-align:center">Tidak ada transaksi pada tanggal ini</td></tr>')
+  +'</tbody></table>'
+  +ttd("");
+}/* Preview → isi modal + area cetak, lalu tampilkan modal */
 function preview(html){ $("print-preview").innerHTML=html; $("print-area").innerHTML=html; $("print-modal").classList.add("open"); }
 function doPrint(){ /* pastikan area cetak sudah terisi dari preview */ window.print(); }
 
