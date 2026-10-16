@@ -1,0 +1,29 @@
+BANK MINI v2 — CARA ONLINE (pilih 1 jalur, ±10 menit)
+
+JALUR A (DISARANKAN SEKOLAH): Google Sheets + hosting gratis
+1. Buka sheets.new (login Gmail sekolah) → rename "BankMini"
+   - Sheet1 rename jadi: students → baris1: nis | nama | pinHash
+   - + sheet: transactions → baris1: id | nis | nama | jenis | nominal | tanggal | keterangan | createdAt
+2. Extensions → Apps Script → hapus isi → paste dari file Code.gs → Save
+   → Deploy → New deployment → tipe Web app
+   → Execute as: Me, Who has access: Anyone → Deploy → copy URL .../exec
+3. Buka index.html (Notepad) → cari SHEETS_API = "" → isi URL tadi → Save
+4. Hosting gratis (tanpa install): buka app.netlify.com/drop → drag folder bankmini-online
+   → dapat link https://xxx.netlify.app → bagikan ke nasabah
+   (Alternatif: github pages / firebase hosting — file firebase.json + firestore.rules sudah siap)
+5. Uji: login petugas admin/bankmini123 → input 1 setoran (isi PIN, misal 1234)
+   → buka tab Nasabah → NIS + PIN 1234 → saldo muncul → Preview/Print jalan
+
+JALUR B: Firebase Firestore
+1. console.firebase.google.com → Add project → Build → Firestore Database → Create database
+2. Project Settings → Add app (Web </>) → copy firebaseConfig → paste ke index.html
+3. Rules: pakai file firestore.rules (awal terbuka, setelah jalan ganti ke versi ketat)
+4. Hosting: npm i -g firebase-tools → firebase login → firebase init hosting → firebase deploy
+
+LOGIN:
+- Petugas (1 operator): username admin, password bankmini123 → segera ubah di tab Petugas.
+- Nasabah: NIS + PIN (PIN dibuat saat setoran pertama, bisa di-reset petugas).
+
+CATATAN:
+- File bankmini-v2.html = versi lokal. Folder bankmini-online/index.html = versi yang di-online-kan (sudah mendukung SHEETS_API + Firebase).
+- Saya tidak bisa membuat project Google/Firebase atas nama Anda tanpa login Anda — tetapi kalau Anda kirim URL /exec Apps Script atau firebaseConfig, saya yang akan memasukkan + menguji koneksinya.
